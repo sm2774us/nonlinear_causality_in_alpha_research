@@ -8,14 +8,24 @@ module(
     compatibility_level = 1,
 )
 
+# ── BCR-VALID DEPENDENCIES ───────────────────────────────────────────────────
 bazel_dep(name = "rules_python",           version = "0.31.0")
 bazel_dep(name = "googletest",             version = "1.14.0")
+#bazel_dep(name = "nanobind",               version = "2.0.0")
+#bazel_dep(name = "hedron_compile_commands", version = "0.0.0")
+
+# ── NON-BCR DEPENDENCIES (REQUIRE OVERRIDES) ─────────────────────────────────
+
+# 1. Nanobind: Must pull from GitHub release tarball
 bazel_dep(name = "nanobind",               version = "2.0.0")
+archive_override(
+    module_name = "nanobind",
+    urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
+    strip_prefix = "nanobind-2.0.0",
+)
 
-# Hedron is not in the BCR, so it requires a git_override.
-# Flagged as a dev_dependency so it doesn't leak to downstream consumers.
+# 2. Hedron: Must pull from GitHub via git_override
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
-
 git_override(
     module_name = "hedron_compile_commands",
     remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
