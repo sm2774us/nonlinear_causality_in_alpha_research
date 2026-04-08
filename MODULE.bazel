@@ -11,7 +11,16 @@ module(
 bazel_dep(name = "rules_python",           version = "0.31.0")
 bazel_dep(name = "googletest",             version = "1.14.0")
 bazel_dep(name = "nanobind",               version = "2.0.0")
-bazel_dep(name = "hedron_compile_commands", version = "0.0.0")
+
+# Hedron is not in the BCR, so it requires a git_override.
+# Flagged as a dev_dependency so it doesn't leak to downstream consumers.
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
+)
 
 # ── Python 3.13 toolchain ──────────────────────────────────────────────────────
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
