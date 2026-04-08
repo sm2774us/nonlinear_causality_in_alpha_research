@@ -52,8 +52,8 @@ def coupled_series(rng) -> tuple[np.ndarray, np.ndarray]:
     y = np.zeros(T)
     x[0], y[0] = 0.5, 0.5
     for t in range(1, T):
-        x[t] = x[t-1] * (1 - x[t-1]) * 3.8 + rng.normal(0, 0.01)
-        y[t] = y[t-1] * (1 - y[t-1]) * 3.5 + 0.3 * x[t-1] + rng.normal(0, 0.01)
+        x[t] = np.clip(x[t-1] * (1 - x[t-1]) * 3.8 + rng.normal(0, 0.01), 0.0, 1.0)
+        y[t] = np.clip(y[t-1] * (1 - y[t-1]) * 3.5 + 0.3 * x[t-1] + rng.normal(0, 0.01), 0.0, 1.0)
     return x, y
 
 
@@ -61,7 +61,7 @@ def coupled_series(rng) -> tuple[np.ndarray, np.ndarray]:
 def raw_df(rng) -> pl.DataFrame:
     assets = ['JPY', 'EUR', 'GBP', 'AUD']
     n = 150
-    dates = pl.date_range(pl.date(2025, 1, 2), pl.date(2025, 8, 1), interval='1bd', eager=True)[:n]
+    dates = pl.date_range(pl.date(2025, 1, 2), pl.date(2025, 8, 1), interval='1d', eager=True)[:n]
     rows = []
     for asset in assets:
         prices = 100.0 * np.exp(np.cumsum(rng.normal(0, 0.01, n)))
@@ -295,6 +295,6 @@ def _to_wide(df: pl.DataFrame) -> pl.DataFrame:
         .sort(['asset', 'date'])
         .with_columns(pl.col('price').log().diff().over('asset').alias('ret'))
         .collect()
-        .pivot(values='ret', index='date', columns='asset', aggregate_function='first')
+        .pivot(values='ret', index='date', on='asset', aggregate_function='first')
         .sort('date')
     )

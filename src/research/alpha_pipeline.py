@@ -90,7 +90,8 @@ class NonlinearFallbackModel:
             Float32 (N,) raw alpha scores.
         """
         def _cols(names: tuple[str, ...]) -> np.ndarray | None:
-            idxs = [col_names.index(c) for c in names if c in col_names]
+            idxs = [col_names.index(c) for c in names
+                    if c in col_names and col_names.index(c) < X.shape[1]]
             return X[:, idxs] if idxs else None
 
         base   = _cols(self.BASE_COLS)
@@ -299,7 +300,7 @@ class AlphaProductionPipeline:
             .collect()
         )
         return ret_df.pivot(
-            values='ret', index='date', columns='asset', aggregate_function='first'
+            values='ret', index='date', on='asset', aggregate_function='first'
         ).sort('date')
 
 
@@ -316,7 +317,7 @@ def _make_sample_data() -> pl.DataFrame:
         dates  = pl.date_range(
             start=pl.date(2024, 1, 2),
             end=pl.date(2026, 1, 1),
-            interval='1bd', eager=True,
+            interval='1d', eager=True,
         )[:n_days]
         for d, p, r in zip(dates, prices, rates):
             rows.append({'date': d, 'asset': asset, 'price': float(p), 'rate': float(r)})

@@ -50,7 +50,7 @@ def raw_df() -> pl.DataFrame:
     dates = pl.date_range(
         start=pl.date(2025, 1, 2),
         end=pl.date(2025, 6, 30),
-        interval="1bd",
+        interval="1d",
         eager=True,
     )[:n]
     rows = []

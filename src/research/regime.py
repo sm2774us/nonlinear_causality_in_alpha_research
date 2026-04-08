@@ -156,8 +156,8 @@ class RegimeEngine:
             kurts = np.array([
                 self._excess_kurtosis(w[:, j]) for j in range(w.shape[1])
             ])
-            obs[t, 2] = np.nanmean(skews)
-            obs[t, 3] = np.nanmean(kurts)
+            obs[t, 2] = float(np.nanmean(skews)) if len(skews) > 0 else 0.0
+            obs[t, 3] = float(np.nanmean(kurts)) if len(kurts) > 0 else 0.0
 
         # Drop NaN rows
         valid_rows = ~np.isnan(obs).any(axis=1)
