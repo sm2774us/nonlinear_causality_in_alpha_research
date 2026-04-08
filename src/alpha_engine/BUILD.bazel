@@ -1,0 +1,44 @@
+# src/alpha_engine/BUILD.bazel — AlphaPod v2
+# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
+
+cc_library(
+    name = "risk_kernel",
+    srcs = [],
+    hdrs = ["RiskKernel.ixx"],
+    copts = select({
+        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
+        "@platforms//os:windows": ["/std:c++latest"],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "macro_alpha_engine",
+    srcs = [],
+    hdrs = ["MacroAlphaEngine.ixx"],
+    deps = [":risk_kernel"],
+    copts = select({
+        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
+        "@platforms//os:windows": ["/std:c++latest"],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "alpha_engine_cpp.so",
+    srcs = ["bindings.cpp"],
+    deps = [":macro_alpha_engine", "@nanobind//:nanobind"],
+    linkshared = True,
+    linkstatic = False,
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "alpha_engine_test",
+    srcs = ["alpha_engine_test.cpp"],
+    deps = [":macro_alpha_engine", "@googletest//:gtest_main"],
+    copts = select({
+        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
+        "@platforms//os:windows": ["/std:c++latest"],
+    }),
+)

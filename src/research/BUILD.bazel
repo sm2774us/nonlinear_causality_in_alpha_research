@@ -1,0 +1,29 @@
+# src/research/BUILD.bazel — AlphaPod v2
+# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
+
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@pip//:requirements.bzl", "requirement")
+
+py_library(name = "config",    srcs = ["config.py"],    visibility = ["//visibility:public"])
+py_library(name = "causality", srcs = ["causality.py"], deps = [":config", requirement("numpy"), requirement("scipy")], visibility = ["//visibility:public"])
+py_library(name = "regime",    srcs = ["regime.py"],    deps = [":config", requirement("numpy"), requirement("scipy"), requirement("polars")], visibility = ["//visibility:public"])
+py_library(name = "features",  srcs = ["features.py"],  deps = [":config", ":regime", ":causality", requirement("polars"), requirement("numpy")])
+py_library(name = "inference", srcs = ["inference.py"], deps = [":config", requirement("numpy")])
+
+py_binary(
+    name = "alpha_pipeline",
+    srcs = ["alpha_pipeline.py"],
+    deps = [":config", ":features", ":inference", ":causality", ":regime", requirement("polars"), requirement("numpy")],
+)
+
+py_test(
+    name = "test_alpha_pipeline",
+    srcs = ["test_alpha_pipeline.py"],
+    deps = [":config", ":features", ":inference", ":alpha_pipeline", requirement("pytest"), requirement("numpy"), requirement("polars")],
+)
+
+py_test(
+    name = "test_nonlinear_pipeline",
+    srcs = ["test_nonlinear_pipeline.py"],
+    deps = [":config", ":causality", ":regime", ":features", ":alpha_pipeline", requirement("pytest"), requirement("numpy"), requirement("polars"), requirement("scipy")],
+)

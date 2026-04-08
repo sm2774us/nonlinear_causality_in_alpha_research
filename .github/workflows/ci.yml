@@ -1,0 +1,56 @@
+# .github/workflows/ci.yml
+# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
+name: AlphaPod-v2-CI
+on:
+  push:
+    branches: [main, release/**]
+  pull_request:
+    branches: [main]
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang-19 libc++-19-dev libc++abi-19-dev \
+            python3.13 python3.13-dev python3.13-venv bazel-7.0.0
+      - name: Set up Python venv
+        run: |
+          python3.13 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install polars numpy scipy pytest pytest-cov
+      - name: Build C++26 engine
+        run: bazel build //src/alpha_engine:alpha_engine_cpp.so --config=linux
+      - name: Run C++ tests
+        run: bazel test //src/alpha_engine:alpha_engine_test --config=linux --test_output=all
+      - name: Run Python v1 tests
+        run: |
+          source .venv/bin/activate
+          cp bazel-bin/src/alpha_engine/alpha_engine_cpp.so src/research/
+          pytest src/research/test_alpha_pipeline.py -v --cov=src/research --cov-report=xml
+      - name: Run Python v2 nonlinear tests
+        run: |
+          source .venv/bin/activate
+          pytest src/research/test_nonlinear_pipeline.py -v
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+  build-windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazelbuild/setup-bazelisk@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install polars numpy scipy pytest pytest-cov
+      - run: bazel build //src/alpha_engine:alpha_engine_cpp.so --config=windows
+      - run: bazel test //src/alpha_engine:alpha_engine_test --config=windows
+      - run: |
+          copy bazel-bin\src\alpha_engine\alpha_engine_cpp.so src\research\alpha_engine_cpp.pyd
+          pytest src/research/test_alpha_pipeline.py -v
+          pytest src/research/test_nonlinear_pipeline.py -v
