@@ -48,8 +48,13 @@ cc_binary(
     name = "alpha_engine_cpp.so",
     srcs = ["bindings.cpp"],
     linkshared = True,
-    linkstatic = False,
+    linkstatic = True,  # <--- ADD THIS LINE
     copts = BINDING_FLAGS, # Use clean flags to keep nanobind happy
+    # THE FIX: Tell the linker to include ALL symbols from nanobind
+    # and not to skip "unused" functions.
+    linkopts = [
+        "-Wl,--no-as-needed",
+    ],
     deps = [
         ":macro_alpha_engine",
         "@nanobind", 
@@ -61,7 +66,10 @@ cc_test(
     srcs = ["alpha_engine_test.cpp"],
     deps = [
         ":macro_alpha_engine", 
-        "@googletest//:gtest_main"
+        "@googletest//:gtest_main",
     ],
     copts = BINDING_FLAGS, # Use clean flags for the test runner
+    # For tests, we force static linking to ensure all symbols from 
+    # your alpha engine and nanobind are baked into the test runner.
+    linkstatic = True,
 )
