@@ -3,24 +3,30 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
 CPP26_FLAGS = select({
-    "@platforms//os:linux":   ["-std=c++26", "-fimplicit-modules", "-fexperimental-library"],
+    "@platforms//os:linux": [
+        "-std=c++26", 
+        "-fimplicit-modules", 
+        "-fexperimental-library",
+        "-Wno-missing-braces" # To handle std::array initialization warnings
+    ],
     "@platforms//os:windows": ["/std:c++latest"],
 })
 
 cc_library(
     name = "risk_kernel",
-    srcs = [], 
-    # Move .ixx here. Bazel allows more extensions in hdrs than in srcs.
-    hdrs = ["RiskKernel.ixx", "RiskKernel.h"],     
+    # 1. The .ixx is a SOURCE file. It is compiled into a module.
+    srcs = ["RiskKernel.ixx"], 
+    # 2. The .h is the HEADER. It is what bindings.cpp and other C++ files include.
+    hdrs = ["RiskKernel.h"],   
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    srcs = [],
-    hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],   
-    deps = [":risk_kernel"],        
+    srcs = ["MacroAlphaEngine.ixx"],
+    hdrs = ["MacroAlphaEngine.h"],
+    deps = [":risk_kernel"],
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
@@ -33,9 +39,8 @@ cc_binary(
     copts = CPP26_FLAGS,
     deps = [
         ":macro_alpha_engine",
-        "@nanobind", 
+        "@nanobind", # Ensure nanobind is a direct dependency
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_test(
