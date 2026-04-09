@@ -7,12 +7,17 @@ build --strip=never
 build --incompatible_enable_cc_toolchain_resolution
 
 # ── Linux / Ubuntu 24.04 (Clang-19 + libc++) ─────────────────────────────────
-# CHANGED: Use -std=c++26 and remove -fmodules-ts to stop Clang 19 errors.
+# COMPILER FLAGS:
 build:linux --cxxopt=-std=c++26
+build:linux --cxxopt=-stdlib=libc++        # <--- THIS IS THE KEY FIX FOR 'import std'
 build:linux --copt=-march=native
-build:linux --copt=-fexperimental-library
-build:linux --linkopt=-stdlib=libc++
-build:linux --linkopt=-lc++abi
+build:linux --copt=-fexperimental-library  # Required for std.simd
+
+# LINKER FLAGS:
+build:linux --linkopt=-stdlib=libc++       # Ensures the binary finds the correct STL
+build:linux --linkopt=-lc++abi             # Low-level C++ runtime support
+
+# ENVIRONMENT:
 build:linux --action_env=CC=clang-19
 build:linux --action_env=CXX=clang++-19
 

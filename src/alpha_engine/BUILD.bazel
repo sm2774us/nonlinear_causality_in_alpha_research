@@ -1,91 +1,82 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
+# src/alpha_engine/BUILD.bazel — AlphaPod v2
+# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
-# FLAGS SET A: For your core Engine logic (.ixx files)
-# These include the "Force C++" flag (-xc++) which is needed for .ixx extensions
-# but is POISONOUS to nanobind's internal includes.
+# FLAGS SET A: For core Module logic
+# Since .bazelrc handles stdlib and c++26, we only need the module-mapping
+# and the -xc++ "force" flag to treat renamed .cpp files as modules.
 STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
-        "-std=c++26", 
         "-fimplicit-modules",
         "-fimplicit-module-maps",
-        "-fexperimental-library",
-        "-xc++", # Required for Clang to compile .cpp as a module interface
+        "-xc++", 
         "-Wno-missing-braces",
         "-Wno-unused-variable",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
-# FLAGS SET B: For the Python Bindings and Tests
-# We remove "-xc++" so Clang treats .cpp files as normal source units,
-# allowing nanobind to resolve its internal #include "nb_internals.cpp" correctly.
+# FLAGS SET B: For Python Bindings and Tests
+# Clean flags to prevent nanobind from being treated as a module interface.
 BINDING_FLAGS = select({
     "@platforms//os:linux": [
-        "-std=c++26", 
         "-fimplicit-modules", 
-        "-fexperimental-library",
+        "-fimplicit-module-maps",
         "-Wno-missing-braces",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
-# --- GENRULES: These transform the extension to satisfy Bazel's internal validator ---
-# 1. Dynamically copy .ixx to .cpp to bypass Bazel's strict extension checker
+# --- GENRULES: Bypassing Bazel's extension validator ---
 
 genrule(
     name = "risk_kernel_source",
     srcs = ["RiskKernel.ixx"],
-    outs = ["RiskKernel_impl.cpp"], # Renamed to avoid header collision
+    outs = ["RiskKernel_impl.cpp"],
     cmd = "cp $< $@",
 )
 
 genrule(
     name = "macro_alpha_engine_source",
     srcs = ["MacroAlphaEngine.ixx"],
-    outs = ["MacroAlphaEngine_impl.cpp"], # Renamed to avoid header collision
+    outs = ["MacroAlphaEngine_impl.cpp"],
     cmd = "cp $< $@",
 )
 
-# --- LIBRARIES: Point srcs to the GENRULE outputs, not the original files ---
+# --- LIBRARIES ---
 
 cc_library(
     name = "risk_kernel",
-    #hdrs = ["RiskKernel.ixx", "RiskKernel.h"],
     srcs = [":risk_kernel_source"],
     hdrs = ["RiskKernel.h"],
-    # CRITICAL: Ensures headers are found when compiling generated .cpp files
     includes = ["."],
-    copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
+    copts = STRICT_MODULE_FLAGS,
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    #hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
     srcs = [":macro_alpha_engine_source"],
     hdrs = ["MacroAlphaEngine.h"],
     includes = ["."],
     deps = [":risk_kernel"],
-    copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
+    copts = STRICT_MODULE_FLAGS,
     visibility = ["//visibility:public"],
 )
 
-# --- BINARY & TEST: These remain the same but now benefit from the fixed upstream deps ---
+# --- BINARY & TEST ---
 
 cc_binary(
     name = "alpha_engine_cpp.so",
     srcs = ["bindings.cpp"],
     linkshared = True,
-    linkstatic = True,  # <--- ADD THIS LINE
-    copts = BINDING_FLAGS, # Use clean flags to keep nanobind happy
-    # THE FIX: Tell the linker to include ALL symbols from nanobind
-    # and not to skip "unused" functions.
+    linkstatic = True,
+    copts = BINDING_FLAGS,
+    # linkopts pruned: stdlib and experimental flags now come from .bazelrc
     linkopts = [
         "-Wl,--no-as-needed",
-        "-stdlib=libc++",      # Force Clang to use its own standard lib
-        "-fexperimental-library"
     ],
     deps = [
         ":macro_alpha_engine",
@@ -96,17 +87,14 @@ cc_binary(
 cc_test(
     name = "alpha_engine_test",
     srcs = ["alpha_engine_test.cpp"],
-    copts = BINDING_FLAGS, # Use clean flags for the test runner
-    # CRITICAL: Prevents "undefined reference to std::cerr" by forcing 
-    # the linker to bundle the standard library and all deps statically.
+    copts = BINDING_FLAGS,
     linkstatic = True,
+    # linkopts pruned: stdlib now comes from .bazelrc
     linkopts = [
-        "-stdlib=libc++",
-        "-fexperimental-library",
         "-lpthread",
     ],
     deps = [
-        ":macro_alpha_engine", 
+        ":macro_alpha_engine",
         "@googletest//:gtest_main",
     ],
 )
