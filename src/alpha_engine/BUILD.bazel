@@ -2,7 +2,8 @@
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
-CPP26_FLAGS = select({
+# 1. Flags for your core Engine (.ixx logic)
+ENGINE_FLAGS = select({
     "@platforms//os:linux": [
         "-std=c++26", 
         "-fimplicit-modules", 
@@ -16,12 +17,26 @@ CPP26_FLAGS = select({
     ],
 })
 
+# 2. Flags for the Bindings (No -xc++ here!)
+BINDING_FLAGS = select({
+    "@platforms//os:linux": [
+        "-std=c++26", 
+        "-fimplicit-modules", 
+        "-fexperimental-library",
+        "-Wno-missing-braces",  # Safe to keep
+    ],
+    "@platforms//os:windows": [
+        "/std:c++latest",
+        "/wd4849",
+    ],
+})
+
 cc_library(
     name = "risk_kernel",
     srcs = [],
     # We put .ixx in hdrs so Bazel doesn't complain about the extension
     hdrs = ["RiskKernel.ixx", "RiskKernel.h"], 
-    copts = CPP26_FLAGS,
+    copts = ENGINE_FLAGS,
     visibility = ["//visibility:public"],
 )
 
@@ -30,7 +45,7 @@ cc_library(
     srcs = [],
     hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
     deps = [":risk_kernel"],
-    copts = CPP26_FLAGS,
+    copts = ENGINE_FLAGS,
     visibility = ["//visibility:public"],
 )
 
@@ -39,10 +54,12 @@ cc_binary(
     srcs = ["bindings.cpp"],
     linkshared = True,
     linkstatic = False,
-    copts = CPP26_FLAGS,
+    # CRITICAL: We do NOT use ENGINE_FLAGS here because nanobind 
+    # headers are sensitive to the -xc++ flag during the binding phase.
+	copts = BINDING_FLAGS, # <--- Clean cross-platform flags
     deps = [
         ":macro_alpha_engine",
-        "@nanobind",
+        "@nanobind", 
     ],
 )
 
@@ -53,5 +70,5 @@ cc_test(
         ":macro_alpha_engine", 
         "@googletest//:gtest_main"
     ],
-    copts = CPP26_FLAGS,
+    copts = ENGINE_FLAGS,
 )
