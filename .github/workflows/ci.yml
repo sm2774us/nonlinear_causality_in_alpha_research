@@ -51,54 +51,22 @@ jobs:
       - name: Install Python dependencies
         run: pip install polars numpy scipy pytest pytest-cov
 
-      # C++26 modules (import std; import std.simd;) need experimental Clang flags
-      # continue-on-error ensures Python tests always run regardless of C++ result
-      - name: Build C++26 SIMD engine
+      - name: Build C++26 SIMD engine (via CMake Delegation)
         id: cpp_build
-        continue-on-error: true
-        # ADD THESE ENV VARS: CC and CXX are the standard way to tell Bazel which compiler to use.
-        # BAZEL_CXXOPTS helps ensure the experimental SIMD headers are found.
-        env:
-          CC: clang-19
-          CXX: clang++-19
-        # By adding --spawn_strategy=local, you tell Bazel: "Stop moving files into an isolated
-        # sandbox. Just run Clang directly in the workspace." Clang will now see the 
-        # nanobind/src/ folder exactly as it was downloaded, it will find 
-        # nb_internals.cpp, and the compilation will finally succeed.
-        # --define=nanobind_opt=separate: Fixes the "Multiple Definition" error by 
-        # forcing a single, consistent compilation path for the third-party nanobind library.
         run: |
-          bazel build //src/alpha_engine:alpha_engine_cpp.so \
+          bazel build //src/alpha_engine:alpha_engine_delegated \
             --config=linux \
-            --spawn_strategy=local \
-            --define=nanobind_opt=separate \
-            --linkopt="-Wl,--allow-multiple-definition"            
+            --spawn_strategy=local
 
       - name: Deploy shared library
-        if: steps.cpp_build.outcome == 'success'
-        run: cp bazel-bin/src/alpha_engine/alpha_engine_cpp.so src/research/
-
-      - name: Run C++ GoogleTest suite
-        if: steps.cpp_build.outcome == 'success'
-        continue-on-error: true
-        # ADD THESE ENV VARS: CC and CXX are the standard way to tell Bazel which compiler to use.
-        # BAZEL_CXXOPTS helps ensure the experimental SIMD headers are found.
-        env:
-          CC: clang-19
-          CXX: clang++-19
-        # By adding --spawn_strategy=local, you tell Bazel: "Stop moving files into an isolated
-        # sandbox. Just run Clang directly in the workspace." Clang will now see the 
-        # nanobind/src/ folder exactly as it was downloaded, it will find 
-        # nb_internals.cpp, and the compilation will finally succeed.
-        # --define=nanobind_opt=separate: Fixes the "Multiple Definition" error by 
-        # forcing a single, consistent compilation path for the third-party nanobind library.
         run: |
-          bazel test //src/alpha_engine:alpha_engine_test \
-            --config=linux \
-            --spawn_strategy=local \
-            --define=nanobind_opt=separate \
-            --linkopt="-Wl,--allow-multiple-definition" \
-            --test_output=all
+          # rules_foreign_cc puts outputs in a nested 'copy_...' folder
+          find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" -exec cp {} src/research/alpha_engine_cpp.so \;
+
+      - name: Run C++ Tests
+        run: |
+          # Run the binary produced by CMake
+          find bazel-bin/src/alpha_engine/ -name "alpha_engine_test" -exec {} \;
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
       - name: Run Python tests

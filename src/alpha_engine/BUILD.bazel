@@ -1,97 +1,39 @@
-# src/alpha_engine/BUILD.bazel — AlphaPod v2
-# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
+# src/alpha_engine/BUILD.bazel — AlphaPod v2 (Delegated to CMake)
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
-# Crucial: Clang 19 requires the resource dir to find internal module maps for std.simd
-RESOURCE_DIR = "-I/usr/lib/llvm-19/lib/clang/19/include"
-
-# FLAGS SET A: For core Module logic (.ixx -> .cpp files)
-STRICT_MODULE_FLAGS = select({
-    "@platforms//os:linux": [
-        "-fimplicit-modules",
-        "-fimplicit-module-maps",
-        "-fbuiltin-module-map", 
-        RESOURCE_DIR,
-        "-xc++", # Force Clang to treat copied .cpp files as C++ Module Interface units
-        "-Wno-missing-braces",
-        "-Wno-unused-variable",
+# 1. Group all files needed for the module build
+filegroup(
+    name = "engine_srcs",
+    srcs = [
+        "CMakeLists.txt",
+        "RiskKernel.ixx",
+        "MacroAlphaEngine.ixx",
+        "bindings.cpp",
+        "alpha_engine_test.cpp",
     ],
-    "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
-})
+)
 
-# FLAGS SET B: For Consumer files (bindings and tests)
-# We avoid -xc++ here because these are traditional translation units that 
-# simply "import" the binary module interfaces.
-BINDING_FLAGS = select({
-    "@platforms//os:linux": [
-        "-fimplicit-modules",
-        "-fimplicit-module-maps",
-        "-fbuiltin-module-map",
-        RESOURCE_DIR,
-        "-Wno-missing-braces",
+# 2. Delegate to CMake
+cmake(
+    name = "alpha_engine_delegated",
+    cache_entries = {
+        "CMAKE_CXX_COMPILER": "clang++-19",
+        "CMAKE_CXX_STANDARD": "26",
+        # Tell CMake to use the libraries Bazel already downloaded
+        "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$", 
+    },
+    lib_source = ":engine_srcs",
+    # We expect CMake to produce these two artifacts
+    out_shared_libs = ["libalpha_engine_cpp.so"],
+    out_binaries = ["alpha_engine_test"],
+    deps = [
+        "@nanobind",
+        "@googletest//:gtest",
     ],
-    "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
-})
-
-# --- GENRULES ---
-# Renames .ixx to .cpp so Bazel's native cc_rules recognize them as compileable sources.
-
-genrule(
-    name = "risk_kernel_source",
-    srcs = ["RiskKernel.ixx"],
-    outs = ["RiskKernel.cpp"],
-    cmd = "cp $< $@",
 )
 
-genrule(
-    name = "macro_alpha_engine_source",
-    srcs = ["MacroAlphaEngine.ixx"],
-    outs = ["MacroAlphaEngine.cpp"],
-    cmd = "cp $< $@",
-)
-
-# --- LIBRARIES ---
-# Notice: No 'hdrs' are listed. In C++26, the compiled module (.pcm) is the interface.
-
-cc_library(
-    name = "risk_kernel",
-    srcs = [":risk_kernel_source"],
-    copts = STRICT_MODULE_FLAGS,
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "macro_alpha_engine",
-    srcs = [":macro_alpha_engine_source"],
-    deps = [":risk_kernel"],
-    copts = STRICT_MODULE_FLAGS,
-    visibility = ["//visibility:public"],
-)
-
-# --- BINARY & TEST ---
-
-cc_binary(
+# 3. Create a shim so the rest of your Bazel graph can find the .so
+alias(
     name = "alpha_engine_cpp.so",
-    srcs = ["bindings.cpp"],
-    linkshared = True,
-    linkstatic = True,
-    copts = BINDING_FLAGS,
-    linkopts = [
-        "-Wl,--no-as-needed",
-    ],
-    deps = [
-        ":macro_alpha_engine",
-        "@nanobind", 
-    ],
-)
-
-cc_test(
-    name = "alpha_engine_test",
-    srcs = ["alpha_engine_test.cpp"],
-    copts = BINDING_FLAGS,
-    linkstatic = True,
-    deps = [
-        ":macro_alpha_engine",
-        "@com_google_googletest//:gtest_main",
-    ],
+    actual = ":alpha_engine_delegated",
 )
