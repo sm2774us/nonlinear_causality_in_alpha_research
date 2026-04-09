@@ -27,9 +27,10 @@
 //   No heap allocation; all operations are in-place on contiguous float spans.
 //
 // Requires: Clang-19+ or MSVC 19.40+ with C++26 / std::simd P1928.
+module; // START OF GLOBAL MODULE FRAGMENT
+#include "RiskKernel.h" 
 
 export module AlphaPod.RiskKernel;
-#include "RiskKernel.h" // Synchronize with the bridge
 
 import std;
 import std.simd;

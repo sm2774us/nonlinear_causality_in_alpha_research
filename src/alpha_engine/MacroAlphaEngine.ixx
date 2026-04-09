@@ -24,13 +24,14 @@
 // Example (C++):
 //   alpha_pod::MacroAlphaEngine engine{};
 //   engine.run_pipeline(alpha, vol, alpha_pod::Regime::STRESS);
+module; // START OF GLOBAL MODULE FRAGMENT
+#include "MacroAlphaEngine.h" // This includes RiskKernel.h via preprocessor
+#include "RiskKernel.h"
 
 export module AlphaPod.MacroAlphaEngine;
-#include "MacroAlphaEngine.h" // Synchronize with the bridge
 
-//import AlphaPod.RiskKernel;
-#include "RiskKernel.h" // Synchronize with the bridge
 import std;
+export import AlphaPod.RiskKernel; // This is the Module-level instruction
 
 namespace alpha_pod {
 

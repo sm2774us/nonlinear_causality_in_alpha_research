@@ -12,6 +12,7 @@ STRICT_MODULE_FLAGS = select({
         "-fexperimental-library",
         "-xc++", # Required for Clang to compile .cpp as a module interface
         "-Wno-missing-braces",
+        "-Wno-unused-variable",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
