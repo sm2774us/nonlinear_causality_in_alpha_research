@@ -37,8 +37,8 @@ cc_library(
     hdrs = glob(["include/nanobind/**/*.h"]),
     includes = ["include"],
     visibility = ["//visibility:public"],
-    # Force C++17 for nanobind and prevent flag leakage
-    copts = ["-std=c++17"], 
+    copts = ["-std=c++17"],
+    features = ["-default_compile_flags"], 
     deps = ["@rules_python//python/cc:current_py_cc_headers"],
 )
 """,

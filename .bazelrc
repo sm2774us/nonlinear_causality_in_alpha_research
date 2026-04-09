@@ -7,9 +7,9 @@ build --strip=never
 build --incompatible_enable_cc_toolchain_resolution
 
 # ── Linux / Ubuntu 24.04 (Clang-19 + libc++) ─────────────────────────────────
-build:linux --cxxopt=-std=c++2b
+# CHANGED: Use -std=c++26 and remove -fmodules-ts to stop Clang 19 errors.
+build:linux --cxxopt=-std=c++26
 build:linux --copt=-march=native
-build:linux --copt=-fmodules-ts
 build:linux --copt=-fexperimental-library
 build:linux --linkopt=-stdlib=libc++
 build:linux --linkopt=-lc++abi
@@ -25,7 +25,6 @@ build:windows --copt=/EHsc
 
 # ── Python 3.13 ───────────────────────────────────────────────────────────────
 build --python_version=PY3
-build --python_path=python3.13
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 test --test_output=errors
