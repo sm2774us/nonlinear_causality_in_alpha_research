@@ -22,8 +22,8 @@ STRICT_MODULE_FLAGS = select({
 # Clean flags to prevent nanobind from being treated as a module interface.
 BINDING_FLAGS = select({
     "@platforms//os:linux": [
-        "-fimplicit-modules", 
-        "-fimplicit-module-maps",
+        # REMOVE -fimplicit-modules here to prevent the "must be imported" error 
+        # in standard .cpp files like bindings.cpp
         "-Wno-missing-braces",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],

@@ -11,6 +11,8 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
+#include <stdexcept> // <--- ADD THIS for std::runtime_error
+#include <span>      // <--- ADD THIS for std::span
 
 //import AlphaPod.MacroAlphaEngine;
 #include "MacroAlphaEngine.h"

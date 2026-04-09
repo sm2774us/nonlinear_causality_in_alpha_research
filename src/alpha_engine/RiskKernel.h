@@ -1,5 +1,6 @@
 // src/alpha_engine/RiskKernel.h
 #pragma once
+#include <array>    // <--- ADD THIS: Required for kRegimeTable
 #include <span>
 #include <string>
 #include <expected>

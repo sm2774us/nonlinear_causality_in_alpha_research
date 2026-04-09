@@ -13,6 +13,9 @@ build:linux --cxxopt=-stdlib=libc++        # <--- THIS IS THE KEY FIX FOR 'impor
 build:linux --copt=-march=native
 build:linux --copt=-fexperimental-library  # Required for std.simd
 
+# Add this to help Clang resolve the built-in module maps for libc++
+build:linux --cxxopt=-fbuiltin-module-map
+
 # LINKER FLAGS:
 build:linux --linkopt=-stdlib=libc++       # Ensures the binary finds the correct STL
 build:linux --linkopt=-lc++abi             # Low-level C++ runtime support
