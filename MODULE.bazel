@@ -1,22 +1,20 @@
 # MODULE.bazel
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
-# Bzlmod dependency manifest for AlphaPod v2 (nonlinear, regime-aware).
-
 module(
     name = "alpha_pod",
     version = "2.0.0",
     compatibility_level = 1,
 )
 
-# ── ALIGNED BCR DEPENDENCIES ────────────────────────────────────────────────
-# Updated to match the versions actually resolved in your logs to stop warnings
+# ── BCR-VALID DEPENDENCIES (Pinned to match your resolved graph) ─────────────
 bazel_dep(name = "rules_python",           version = "1.7.0")
 bazel_dep(name = "googletest",             version = "1.17.0")
 bazel_dep(name = "bazel_skylib",           version = "1.7.1")
+bazel_dep(name = "rules_cc",               version = "0.0.17")
 
-# ── NON-BCR / LEGACY DEPENDENCIES ──────────────────────────────────────────
+# ── NON-BCR / LEGACY DEPENDENCIES ───────────────────────────────────────────
 
-# 1. Hedron: Direct git override
+# 1. Hedron: Requires git_override (it has a MODULE.bazel, just not in BCR)
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(
     module_name = "hedron_compile_commands",
@@ -24,14 +22,24 @@ git_override(
     commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
 )
 
-# 2. Nanobind: Legacy Archive (Injected into Bzlmod)
-# This uses the http_archive rule but exposes it to the module graph
+# 2. Nanobind: Legacy Archive with Injected BUILD logic
+# We use http_archive via use_repo_rule to avoid the "No MODULE.bazel" error.
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "nanobind",
     urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
     strip_prefix = "nanobind-2.0.0",
     integrity = "sha256-LnBydITtt6hkXSb2qfZzUqZoZXw03npgO/nGjly/j/k=",
+    build_file_content = """
+cc_library(
+    name = "nanobind",
+    srcs = glob(["src/*.cpp"]),
+    hdrs = glob(["include/nanobind/**/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    deps = ["@rules_python//python/cc:current_py_cc_headers"],
+)
+""",
 )
 
 # ── Python 3.13 Toolchain ─────────────────────────────────────────────────────

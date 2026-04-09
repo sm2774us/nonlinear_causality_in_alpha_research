@@ -13,18 +13,6 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-cc_library(
-    name = "macro_alpha_engine",
-    srcs = [],
-    hdrs = ["MacroAlphaEngine.ixx"],
-    deps = [":risk_kernel"],
-    copts = select({
-        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
-        "@platforms//os:windows": ["/std:c++latest"],
-    }),
-    visibility = ["//visibility:public"],
-)
-
 #cc_binary(
 #    name = "alpha_engine_cpp.so",
 #    srcs = ["bindings.cpp"],
