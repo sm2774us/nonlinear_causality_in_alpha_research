@@ -70,11 +70,9 @@ jobs:
         run: |
           bazel build //src/alpha_engine:alpha_engine_cpp.so \
             --config=linux \
-            --action_env=CC=clang-19 \
-            --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
-            --linkopt=-Wl,--allow-multiple-definition
+            --linkopt="-Wl,--allow-multiple-definition"            
 
       - name: Deploy shared library
         if: steps.cpp_build.outcome == 'success'
@@ -97,14 +95,8 @@ jobs:
         run: |
           bazel test //src/alpha_engine:alpha_engine_test \
             --config=linux \
-            --action_env=CC=clang-19 \
-            --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
-            --linkopt="-lstdc++" \
-            --linkopt="-lm" \
-            --linkopt="-lpthread" \
-            --linkopt="-ldl" \
             --linkopt="-Wl,--allow-multiple-definition" \
             --test_output=all
 

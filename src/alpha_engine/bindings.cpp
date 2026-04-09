@@ -14,8 +14,10 @@
 #include <stdexcept> // <--- ADD THIS for std::runtime_error
 #include <span>      // <--- ADD THIS for std::span
 
-//import AlphaPod.MacroAlphaEngine;
-#include "MacroAlphaEngine.h"
+// CRITICAL: Import the module AFTER the nanobind headers.
+// This ensures nanobind's macros don't interfere with the module's global fragment.
+import AlphaPod.MacroAlphaEngine;
+import AlphaPod.RiskKernel; 
 
 namespace nb = nanobind;
 using FloatArr = nb::ndarray<float, nb::shape<-1>, nb::c_contig, nb::device::cpu>;
@@ -26,17 +28,18 @@ NB_MODULE(alpha_engine_cpp, m) {
     // ── Expose Regime enum ─────────────────────────────────────────────────────
     nb::enum_<alpha_pod::Regime>(m, "Regime",
         "Market regime for regime-conditional risk kernel.")
-        .value("CALM",       alpha_pod::Regime::CALM,       "Low vol, capture carry")
-        .value("TRANSITION", alpha_pod::Regime::TRANSITION, "Baseline parameters")
-        .value("STRESS",     alpha_pod::Regime::STRESS,     "De-risk; tight caps")
+        .value("CALM",       alpha_pod::Regime::CALM)
+        .value("TRANSITION", alpha_pod::Regime::TRANSITION)
+        .value("STRESS",     alpha_pod::Regime::STRESS)
         .export_values();
 
     // ── MacroAlphaEngine ───────────────────────────────────────────────────────
-    nb::class_<alpha_pod::MacroAlphaEngine>(m, "MacroAlphaEngine",
-        "Regime-conditional SIMD alpha risk pipeline (v2).")
+    nb::class_<alpha_pod::MacroAlphaEngine>(m, "MacroAlphaEngine")
+        // FIX: Use hardcoded literals for defaults in the binding layer.
+        // Referring to kRegimeTable[1] here can cause "module visibility" errors in Clang 19.
         .def(nb::init<float, float>(),
-             nb::arg("vol_target") = alpha_pod::kRegimeTable[1].vol_target,
-             nb::arg("weight_cap") = alpha_pod::kRegimeTable[1].weight_cap)
+             nb::arg("vol_target") = 0.10f,
+             nb::arg("weight_cap") = 0.20f)
 
         .def_prop_ro("vol_target", &alpha_pod::MacroAlphaEngine::vol_target)
         .def_prop_ro("weight_cap", &alpha_pod::MacroAlphaEngine::weight_cap)

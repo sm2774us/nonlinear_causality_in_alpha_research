@@ -1,63 +1,61 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
-# src/alpha_engine/BUILD.bazel — AlphaPod v2
-# Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
-# Crucial: Clang 19 requires the resource dir to find internal module maps
+# Crucial: Clang 19 requires the resource dir to find internal module maps for std.simd
 RESOURCE_DIR = "-I/usr/lib/llvm-19/lib/clang/19/include"
 
-# FLAGS SET A: For core Module logic
-# Since .bazelrc handles stdlib and c++26, we only need the module-mapping
-# and the -xc++ "force" flag to treat renamed .cpp files as modules.
+# FLAGS SET A: For core Module logic (.ixx -> .cpp files)
 STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
-        "-fexperimental-library", # Required for std.simd
         "-fimplicit-modules",
         "-fimplicit-module-maps",
-        "-fbuiltin-module-map",  # FIX: Required for Clang to find internal stdint/stddef modules. THIS solves the 'module not provided' error.
+        "-fbuiltin-module-map", 
         RESOURCE_DIR,
-        "-xc++", 
+        "-xc++", # Force Clang to treat copied .cpp files as C++ Module Interface units
         "-Wno-missing-braces",
         "-Wno-unused-variable",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
-# FLAGS SET B: For Python Bindings and Tests
-# Clean flags to prevent nanobind from being treated as a module interface.
+# FLAGS SET B: For Consumer files (bindings and tests)
+# We avoid -xc++ here because these are traditional translation units that 
+# simply "import" the binary module interfaces.
 BINDING_FLAGS = select({
     "@platforms//os:linux": [
-        # REMOVE -fimplicit-modules here to prevent the "must be imported" error 
-        # in standard .cpp files like bindings.cpp
+        "-fimplicit-modules",
+        "-fimplicit-module-maps",
+        "-fbuiltin-module-map",
+        RESOURCE_DIR,
         "-Wno-missing-braces",
     ],
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
-# --- GENRULES: Bypassing Bazel's extension validator ---
+# --- GENRULES ---
+# Renames .ixx to .cpp so Bazel's native cc_rules recognize them as compileable sources.
 
 genrule(
     name = "risk_kernel_source",
     srcs = ["RiskKernel.ixx"],
-    outs = ["RiskKernel_impl.cpp"],
+    outs = ["RiskKernel.cpp"],
     cmd = "cp $< $@",
 )
 
 genrule(
     name = "macro_alpha_engine_source",
     srcs = ["MacroAlphaEngine.ixx"],
-    outs = ["MacroAlphaEngine_impl.cpp"],
+    outs = ["MacroAlphaEngine.cpp"],
     cmd = "cp $< $@",
 )
 
 # --- LIBRARIES ---
+# Notice: No 'hdrs' are listed. In C++26, the compiled module (.pcm) is the interface.
 
 cc_library(
     name = "risk_kernel",
     srcs = [":risk_kernel_source"],
-    hdrs = ["RiskKernel.h"],
-    includes = ["."],
     copts = STRICT_MODULE_FLAGS,
     visibility = ["//visibility:public"],
 )
@@ -65,8 +63,6 @@ cc_library(
 cc_library(
     name = "macro_alpha_engine",
     srcs = [":macro_alpha_engine_source"],
-    hdrs = ["MacroAlphaEngine.h"],
-    includes = ["."],
     deps = [":risk_kernel"],
     copts = STRICT_MODULE_FLAGS,
     visibility = ["//visibility:public"],
@@ -80,7 +76,6 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     copts = BINDING_FLAGS,
-    # linkopts pruned: stdlib and experimental flags now come from .bazelrc
     linkopts = [
         "-Wl,--no-as-needed",
     ],
@@ -95,12 +90,8 @@ cc_test(
     srcs = ["alpha_engine_test.cpp"],
     copts = BINDING_FLAGS,
     linkstatic = True,
-    # linkopts pruned: stdlib now comes from .bazelrc
-    linkopts = [
-        "-lpthread",
-    ],
     deps = [
         ":macro_alpha_engine",
-        "@googletest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )

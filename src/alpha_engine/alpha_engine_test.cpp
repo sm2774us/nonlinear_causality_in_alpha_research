@@ -25,58 +25,10 @@
 #include <vector>
 #include <span>
 
-//import AlphaPod.MacroAlphaEngine;
-//import AlphaPod.RiskKernel;
-#include "MacroAlphaEngine.h" // Synchronize with the bridge
-#include "RiskKernel.h" // Synchronize with the bridge
+import AlphaPod.MacroAlphaEngine;
+import AlphaPod.RiskKernel;
 
 namespace alpha_pod::test {
-
-using namespace alpha_pod;
-
-// TEST(RiskKernelV2, SIMDRankZScore) {
-//     std::vector<float> alpha(128);
-//     std::iota(alpha.begin(), alpha.end(), -64.0f);
-//     float clip = kRegimeTable[0].zscore_clip;
-    
-//     auto r = RiskKernel::rank_zscore_simd(alpha, clip);
-//     ASSERT_TRUE(r.has_value());
-    
-//     for (float v : alpha) {
-//         EXPECT_FALSE(std::isnan(v));
-//         EXPECT_LE(std::abs(v), clip + 1e-4f);
-//     }
-// }
-
-// TEST(RiskKernelV2, NonlinearInteraction) {
-//     std::vector<float> alpha_lv(128, 0.5f); 
-//     std::vector<float> alpha_hv(128, 0.5f);
-//     std::vector<float> vol_lv(128, 0.05f);  
-//     std::vector<float> vol_hv(128, 0.40f); 
-
-//     auto r1 = RiskKernel::apply_nonlinear_interaction_cap(alpha_lv, vol_lv, 0.10f, 0.20f);
-//     auto r2 = RiskKernel::apply_nonlinear_interaction_cap(alpha_hv, vol_hv, 0.10f, 0.20f);
-
-//     ASSERT_TRUE(r1.has_value());
-//     ASSERT_TRUE(r2.has_value());
-//     EXPECT_GT(alpha_lv[0], alpha_hv[0]);
-// }
-
-// TEST(MacroAlphaEngineV2, RegimePipeline) {
-//     std::vector<float> alpha(128, 1.0f);
-//     std::vector<float> vol(128, 0.15f);
-//     MacroAlphaEngine engine{0.10f, 0.20f};
-    
-//     // Stress Regime (Index 2)
-//     auto result = engine.run_pipeline(alpha, vol, Regime::STRESS);
-//     ASSERT_TRUE(result.has_value());
-    
-//     // Stress cap is 0.12, verify it's enforced
-//     for (float v : alpha) {
-//         EXPECT_LE(std::abs(v), 0.12f + 1e-4f);
-//     }
-// }
-
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
