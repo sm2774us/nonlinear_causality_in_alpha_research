@@ -102,6 +102,10 @@ jobs:
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
             --linkopt=-Wl,--allow-multiple-definition \
+            --cxxopt="-std=c++26" \
+            --linkopt="-lstdc++" \
+            --linkopt="-lm" \
+            --linkopt="-Wl,--allow-multiple-definition" \
             --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
