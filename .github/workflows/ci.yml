@@ -102,6 +102,7 @@ jobs:
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
             --cxxopt="-std=c++26" \
+            --cxxopt="-fexperimental-library" \
             --linkopt="-lstdc++" \
             --linkopt="-lm" \
             --linkopt="-lpthread" \
