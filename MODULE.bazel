@@ -23,6 +23,7 @@ git_override(
 )
 
 # 2. Add tsl-robin-map (Required by nanobind internals)
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "tsl_robin_map",
     urls = ["https://github.com/Tessil/robin-map/archive/refs/tags/v1.3.0.tar.gz"],
@@ -40,7 +41,6 @@ cc_library(
 
 # 3. Nanobind: Final corrected injection with internal header paths
 # We use http_archive via use_repo_rule to avoid the "No MODULE.bazel" error.
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "nanobind",
     urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
