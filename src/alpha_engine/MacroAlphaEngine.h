@@ -1,20 +1,38 @@
 // src/alpha_engine/MacroAlphaEngine.h
 #pragma once
+#include "RiskKernel.h" // Necessary for kRegimeTable and Regime
 #include <vector>
 #include <span>
 #include <string>
 #include <expected>
 
 namespace alpha_pod {
-    enum class Regime : int { CALM = 0, TRANSITION = 1, STRESS = 2 };
-
     class MacroAlphaEngine {
     public:
-        MacroAlphaEngine() = default;
+        // Default arguments must be in the header
+        MacroAlphaEngine(
+            float vol_target = kRegimeTable[1].vol_target,
+            float weight_cap = kRegimeTable[1].weight_cap
+        );
+
         std::expected<void, std::string> run_pipeline(
             std::span<float> alpha, 
             std::span<const float> f_vol, 
             Regime regime = Regime::TRANSITION
         ) const noexcept;
+
+        // Legacy v1 overload
+        std::expected<void, std::string> run_pipeline(
+            std::span<float> alpha, 
+            std::span<const float> f_vol
+        ) const noexcept;
+
+        // Added getters for nanobind def_prop_ro
+        float vol_target() const noexcept;
+        float weight_cap() const noexcept;
+
+    private:
+        float vol_target_;
+        float weight_cap_;
     };
 }

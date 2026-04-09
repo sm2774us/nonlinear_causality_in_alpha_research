@@ -34,72 +34,40 @@ import std;
 
 namespace alpha_pod {
 
-/// @brief Regime-conditional risk-transformation pipeline.
-export class MacroAlphaEngine {
-public:
-    /// Default-constructed engine uses kRegimeTable for all parameters.
-    /// Explicit vol_target / weight_cap are ONLY used as legacy fallback
-    /// when run_pipeline() is called without a regime argument.
-    explicit MacroAlphaEngine(
-        float vol_target = kRegimeTable[1].vol_target,
-        float weight_cap = kRegimeTable[1].weight_cap
-    ) : vol_target_{vol_target}, weight_cap_{weight_cap} {}
+// ── Constructor ──────────────────────────────────────────────────────────────
+MacroAlphaEngine::MacroAlphaEngine(float vol_target, float weight_cap)
+    : vol_target_{vol_target}, weight_cap_{weight_cap} {}
 
-    // ── v2 Pipeline (regime-conditional) ─────────────────────────────────────
+// ── v2 Pipeline (regime-conditional) ─────────────────────────────────────
+std::expected<void, std::string>
+MacroAlphaEngine::run_pipeline(
+    std::span<float>       alpha,
+    std::span<const float> f_vol,
+    Regime                 regime
+) const noexcept {
+    const float clip = kRegimeTable[static_cast<int>(regime)].zscore_clip;
+    const float vt   = kRegimeTable[static_cast<int>(regime)].vol_target;
+    const float cap  = kRegimeTable[static_cast<int>(regime)].weight_cap;
 
-    /// @brief Runs the NONLINEAR regime-conditional risk pipeline in-place.
-    ///
-    /// Steps:
-    ///   1. rank_zscore_simd      — rank-based z-score; clip tightened in STRESS
-    ///   2. apply_vol_scaling_regime  — vol-target from kRegimeTable[regime]
-    ///   3. apply_nonlinear_interaction_cap — per-asset effective cap ∝ vol
-    ///   4. apply_circuit_breaker_regime    — hard floor from kRegimeTable[regime]
-    ///
-    /// @param alpha   [in/out] Raw model scores → final weights.
-    /// @param f_vol   [in]     Realised annualised vol per asset.
-    /// @param regime  Current market regime (Python RegimeEngine output).
-    [[nodiscard]] std::expected<void, std::string>
-    run_pipeline(
-        std::span<float>       alpha,
-        std::span<const float> f_vol,
-        Regime                 regime = Regime::TRANSITION
-    ) const noexcept {
-        const float clip = kRegimeTable[static_cast<int>(regime)].zscore_clip;
-        const float vt   = kRegimeTable[static_cast<int>(regime)].vol_target;
-        const float cap  = kRegimeTable[static_cast<int>(regime)].weight_cap;
+    if (auto r = RiskKernel::rank_zscore_simd(alpha, clip); !r) return r;
+    if (auto r = RiskKernel::apply_vol_scaling_regime(alpha, f_vol, regime); !r) return r;
+    if (auto r = RiskKernel::apply_nonlinear_interaction_cap(alpha, f_vol, vt, cap); !r) return r;
+    if (auto r = RiskKernel::apply_circuit_breaker_regime(alpha, regime); !r) return r;
 
-        // Step 1: Rank-based z-score (regime-specific clip)
-        if (auto r = RiskKernel::rank_zscore_simd(alpha, clip); !r) return r;
+    return {};
+}
 
-        // Step 2: Regime-conditional vol scaling
-        if (auto r = RiskKernel::apply_vol_scaling_regime(alpha, f_vol, regime); !r) return r;
+// ── v1 legacy API (backward compatible) ───────────────────────────────────
+std::expected<void, std::string>
+MacroAlphaEngine::run_pipeline(
+    std::span<float>       alpha,
+    std::span<const float> f_vol
+) const noexcept {
+    return run_pipeline(alpha, f_vol, Regime::TRANSITION);
+}
 
-        // Step 3: Nonlinear interaction cap (alpha × vol → tighter cap for high-vol assets)
-        if (auto r = RiskKernel::apply_nonlinear_interaction_cap(alpha, f_vol, vt, cap); !r) return r;
-
-        // Step 4: Hard regime-specific circuit breaker
-        if (auto r = RiskKernel::apply_circuit_breaker_regime(alpha, regime); !r) return r;
-
-        return {};
-    }
-
-    // ── v1 legacy API (backward compatible) ───────────────────────────────────
-
-    /// @brief v1 pipeline — delegates to TRANSITION regime for backward compatibility.
-    [[nodiscard]] std::expected<void, std::string>
-    run_pipeline(
-        std::span<float>       alpha,
-        std::span<const float> f_vol
-    ) const noexcept {
-        return run_pipeline(alpha, f_vol, Regime::TRANSITION);
-    }
-
-    [[nodiscard]] float vol_target()  const noexcept { return vol_target_; }
-    [[nodiscard]] float weight_cap()  const noexcept { return weight_cap_; }
-
-private:
-    float vol_target_;
-    float weight_cap_;
-};
+// ── Getters for nanobind ───────────────────────────────────────────────────
+float MacroAlphaEngine::vol_target() const noexcept { return vol_target_; }
+float MacroAlphaEngine::weight_cap() const noexcept { return weight_cap_; }
 
 } // namespace alpha_pod

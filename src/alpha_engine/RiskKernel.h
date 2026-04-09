@@ -9,7 +9,7 @@ namespace alpha_pod {
     // ── Regime parameter tables (compile-time) ────────────────────────────────────
 
     /// Market regime identifiers (must match Python RegimeState enum).
-    export enum class Regime : int {
+    enum class Regime : int {
         CALM       = 0,
         TRANSITION = 1,
         STRESS     = 2,
