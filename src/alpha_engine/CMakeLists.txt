@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. CLEAN FLAGS: Remove -fimplicit-modules to stop the 'pthread.h' warnings.
-# Bazel's environment already provides the module maps.
+# Bazel's toolchain already provides the necessary environment.
 add_compile_options(-fexperimental-library -stdlib=libc++)
 
 # 2. Engine Library (Static)

@@ -57,7 +57,7 @@ jobs:
           # 2. Build via CMake delegation
           bazel build //src/alpha_engine:alpha_engine_delegated --config=linux --spawn_strategy=local
           
-          # 3. Use find to grab the .so regardless of the 'copy_...' folder name
+          # 3. Locate the .so regardless of the internal folder name
           SO_FILE=$(find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" | head -n 1)
           cp "$SO_FILE" src/research/alpha_engine_cpp.so
           
