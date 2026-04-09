@@ -8,7 +8,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
         "-std=c++26", 
-        "-fimplicit-modules", 
+        "-fimplicit-modules",
+        "-fimplicit-module-maps",
         "-fexperimental-library",
         "-xc++", # Required for Clang to compile .cpp as a module interface
         "-Wno-missing-braces",
@@ -83,6 +84,8 @@ cc_binary(
     # and not to skip "unused" functions.
     linkopts = [
         "-Wl,--no-as-needed",
+        "-stdlib=libc++",      # Force Clang to use its own standard lib
+        "-fexperimental-library"
     ],
     deps = [
         ":macro_alpha_engine",
@@ -97,6 +100,11 @@ cc_test(
     # CRITICAL: Prevents "undefined reference to std::cerr" by forcing 
     # the linker to bundle the standard library and all deps statically.
     linkstatic = True,
+    linkopts = [
+        "-stdlib=libc++",
+        "-fexperimental-library",
+        "-lpthread",
+    ],
     deps = [
         ":macro_alpha_engine", 
         "@googletest//:gtest_main",
