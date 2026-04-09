@@ -65,12 +65,15 @@ jobs:
         # sandbox. Just run Clang directly in the workspace." Clang will now see the 
         # nanobind/src/ folder exactly as it was downloaded, it will find 
         # nb_internals.cpp, and the compilation will finally succeed.
+        # --define=nanobind_opt=separate: Fixes the "Multiple Definition" error by 
+        # forcing a single, consistent compilation path for the third-party nanobind library.
         run: |
           bazel build //src/alpha_engine:alpha_engine_cpp.so \
             --config=linux \
             --action_env=CC=clang-19 \
             --action_env=CXX=clang++-19 \
-            --spawn_strategy=local    # <--- THE MAGIC FIX
+            --spawn_strategy=local \
+            --define=nanobind_opt=separate    # <--- THE LINKER RESOLUTION
 
       - name: Deploy shared library
         if: steps.cpp_build.outcome == 'success'
@@ -88,12 +91,15 @@ jobs:
         # sandbox. Just run Clang directly in the workspace." Clang will now see the 
         # nanobind/src/ folder exactly as it was downloaded, it will find 
         # nb_internals.cpp, and the compilation will finally succeed.
+        # --define=nanobind_opt=separate: Fixes the "Multiple Definition" error by 
+        # forcing a single, consistent compilation path for the third-party nanobind library.
         run: |
           bazel test //src/alpha_engine:alpha_engine_test \
             --config=linux \
             --action_env=CC=clang-19 \
             --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
+            --define=nanobind_opt=separate \
             --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
