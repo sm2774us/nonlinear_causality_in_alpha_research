@@ -29,10 +29,25 @@ BINDING_FLAGS = select({
     "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
+# 1. Dynamically copy .ixx to .cpp to bypass Bazel's strict extension checker
+genrule(
+    name = "risk_kernel_cpp",
+    srcs = ["RiskKernel.ixx"],
+    outs = ["RiskKernel.cpp"],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "macro_alpha_engine_cpp",
+    srcs = ["MacroAlphaEngine.ixx"],
+    outs = ["MacroAlphaEngine.cpp"],
+    cmd = "cp $< $@",
+)
+
 cc_library(
     name = "risk_kernel",
     #hdrs = ["RiskKernel.ixx", "RiskKernel.h"],
-    srcs = ["RiskKernel.ixx"],        # <--- MOVED TO srcs
+    srcs = ["RiskKernel.ixx"],         # <--- MOVED TO srcs
     hdrs = ["RiskKernel.h"],
     copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
