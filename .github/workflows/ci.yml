@@ -60,13 +60,26 @@ jobs:
 
       - name: Deploy shared library
         run: |
-          # rules_foreign_cc puts outputs in a nested 'copy_...' folder
-          find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" -exec cp {} src/research/alpha_engine_cpp.so \;
+          # rules_foreign_cc creates a nested directory structure. 
+          # We locate the .so and move it to the research folder as a .so
+          # so that 'import alpha_engine_cpp' works in Python 3.13.
+          LIB_PATH=$(find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" | head -n 1)
+          if [ -f "$LIB_PATH" ]; then
+            cp "$LIB_PATH" src/research/alpha_engine_cpp.so
+            echo "Successfully deployed $LIB_PATH to src/research/"
+          else
+            echo "Build artifact libalpha_engine_cpp.so not found!"
+            exit 1
+          fi
 
       - name: Run C++ Tests
         run: |
-          # Run the binary produced by CMake
-          find bazel-bin/src/alpha_engine/ -name "alpha_engine_test" -exec {} \;
+          # We call the sh_test target defined in the BUILD file.
+          # This is cleaner than 'find -exec' because it uses Bazel's 
+          # test isolation and logging.
+          bazel test //src/alpha_engine:alpha_engine_test \
+            --config=linux \
+            --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
       - name: Run Python tests

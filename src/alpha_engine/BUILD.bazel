@@ -19,23 +19,31 @@ cmake(
     cache_entries = {
         "CMAKE_CXX_COMPILER": "clang++-19",
         "CMAKE_CXX_STANDARD": "26",
-        # Tell CMake to use the libraries Bazel already downloaded
-        "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$", 
+        # Force CMake to prioritize the headers/static libs in the Bazel sandbox
+        "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$",
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
     },
     lib_source = ":engine_srcs",
-    # We expect CMake to produce these two artifacts
+    # Produce the .so for Python and the binary for GoogleTest
     out_shared_libs = ["libalpha_engine_cpp.so"],
     out_binaries = ["alpha_engine_test"],
     deps = [
-        # FIX: Point to the specific library target to avoid 
-        # double-linking the 'combined' and 'individual' object files.
-        "@nanobind//:nanobind", 
+        # CRITICAL: We use the specific nanobind target.
+        # This prevents rules_foreign_cc from seeing both 'nb_combined' and 'common'.
+        "@nanobind//:nanobind",
         "@googletest//:gtest",
     ],
 )
 
-# 3. Create a shim so the rest of your Bazel graph can find the .so
+# 3. Create the shim for the rest of the Bazel graph
 alias(
     name = "alpha_engine_cpp.so",
     actual = ":alpha_engine_delegated",
+)
+
+# 4. Expose the test binary as a runnable Bazel test
+sh_test(
+    name = "alpha_engine_test",
+    srcs = ["test_wrapper.sh"], # Simple script to run the output binary
+    data = [":alpha_engine_delegated"],
 )
