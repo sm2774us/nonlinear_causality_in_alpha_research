@@ -13,14 +13,13 @@ cmake(
         "CMAKE_CXX_STANDARD": "26",
         "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$",
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-        # Pass minimal flags to prevent environment pollution
         "CMAKE_CXX_FLAGS": "-stdlib=libc++ -fexperimental-library",
     },
     lib_source = ":engine_srcs",
     out_shared_libs = ["libalpha_engine_cpp.so"],
     out_binaries = ["alpha_engine_test"],
     deps = [
-        # Target the specific nanobind library only
+        # CRITICAL: Target individual libraries to prevent double-counting
         "@nanobind//:nanobind",
         "@googletest//:gtest_main",
     ],

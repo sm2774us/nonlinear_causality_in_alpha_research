@@ -51,7 +51,7 @@ jobs:
 
       - name: Build and Deploy Alpha Engine
         run: |
-          # 1. Purge stale module/linker artifacts
+          # 1. Clean stale artifacts
           bazel clean --expunge
           
           # 2. Build via CMake delegation
