@@ -15,13 +15,14 @@ namespace alpha_pod {
             float weight_cap = kRegimeTable[1].weight_cap
         );
 
+        // Explicit v2: Requires 3 arguments
         std::expected<void, std::string> run_pipeline(
             std::span<float> alpha, 
             std::span<const float> f_vol, 
-            Regime regime = Regime::TRANSITION
+            Regime regime
         ) const noexcept;
 
-        // Legacy v1 overload
+        // Legacy v1: Requires 2 arguments
         std::expected<void, std::string> run_pipeline(
             std::span<float> alpha, 
             std::span<const float> f_vol

@@ -58,6 +58,7 @@ MacroAlphaEngine::run_pipeline(
 }
 
 // ── v1 legacy API (backward compatible) ───────────────────────────────────
+// Implementation of the 2-arg version (delegates to the 3-arg version)
 std::expected<void, std::string>
 MacroAlphaEngine::run_pipeline(
     std::span<float>       alpha,
