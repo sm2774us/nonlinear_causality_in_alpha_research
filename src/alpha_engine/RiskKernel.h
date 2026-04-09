@@ -1,8 +1,10 @@
 // src/alpha_engine/RiskKernel.h
 #pragma once
+
 #include <span>
 #include <string>
 #include <expected>
+#include <array>
 
 namespace alpha_pod {
     enum class Regime : int { CALM = 0, TRANSITION = 1, STRESS = 2 };
@@ -13,10 +15,12 @@ namespace alpha_pod {
         float zscore_clip;
     };
 
-    // Forward declare as a raw array.
-    // Forward declare: Definition moves to RiskKernel.ixx
-    // This is 100% ABI compatible and requires ZERO standard library headers.
-    extern const RegimeParams kRegimeTable[3];
+    // Aligned with Ma & Prosperino (2023)
+    inline constexpr std::array<RegimeParams, 3> kRegimeTable{{
+        {0.12f, 0.25f, 3.0f},   // CALM
+        {0.10f, 0.20f, 3.0f},   // TRANSITION
+        {0.06f, 0.12f, 2.0f},   // STRESS
+    }};
 
     struct RiskKernel {
         [[nodiscard]] static std::expected<void, std::string> rank_zscore_simd(std::span<float> alpha, float clip) noexcept;

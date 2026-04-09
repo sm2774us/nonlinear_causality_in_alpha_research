@@ -37,42 +37,6 @@ import std.simd;
 
 namespace alpha_pod {
 
-// Definition of the table declared in the header
-// Definitive exported definition using a raw C-style array
-// This removes the dependency on <array> template instantiation during the module's 
-// global fragment processing.
-// Why this is better for your C++26/Clang-19 Build?
-// 1) Zero Template Overhead: 
-//    -----------------------------
-//    std::array is a template. When you use it, the compiler must look up 
-//    the definition of std::array in the std module. If you are in the 
-//    middle of defining a module that imports std, you can sometimes 
-//    hit "circularity" or "incomplete type" errors depending on 
-//    the compiler's reachability rules. A raw array is 
-//    a fundamental language feature and has no such overhead.
-// 2) Header Integrity:
-//    -----------------------------
-//    By using RegimeParams kRegimeTable[3], your RiskKernel.h 
-//    no longer needs to #include <array>. This keeps the header "clean," 
-//    preventing the import of module 'std' imported non C++20 importable modules 
-//    error that occurs when a header and a module both try to claim the <array> name.
-// 3) Performance:
-//    -----------------------------
-//    There is zero performance difference. In C++, std::array<T, N> 
-//    is essentially a thin wrapper around T[N]. 
-//    The SIMD instructions generated for your kernels will be identical.
-// 4) Attribute & Specifier Safety:
-//    -----------------------------
-//    Since you are moving [[nodiscard]] and explicit 
-//    to the .h as discussed, keeping the data structures in the header 
-//    as simple as possible (raw arrays) ensures that nanobind and GTest 
-//    can parse the header without needing the full C++26 module logic.
-export constexpr RegimeParams kRegimeTable[3] = {
-    {0.12f, 0.25f, 3.0f}, // CALM
-    {0.10f, 0.20f, 3.0f}, // TRANSITION
-    {0.06f, 0.12f, 2.0f}  // STRESS
-};
-
 // ── v2 Implementation ────────────────────────────────────────────────────────
 
 // ── Rank-based Z-score (v2 upgrade, replaces Pearson z-score) ─────────────

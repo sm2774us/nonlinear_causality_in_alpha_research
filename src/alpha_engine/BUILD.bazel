@@ -12,6 +12,7 @@ RESOURCE_DIR = "-I/usr/lib/llvm-19/lib/clang/19/include"
 # and the -xc++ "force" flag to treat renamed .cpp files as modules.
 STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
+        "-fexperimental-library", # Required for std.simd
         "-fimplicit-modules",
         "-fimplicit-module-maps",
         "-fbuiltin-module-map",  # FIX: Required for Clang to find internal stdint/stddef modules. THIS solves the 'module not provided' error.
