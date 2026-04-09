@@ -31,14 +31,18 @@ BINDING_FLAGS = select({
 
 cc_library(
     name = "risk_kernel",
-    hdrs = ["RiskKernel.ixx", "RiskKernel.h"], 
+    #hdrs = ["RiskKernel.ixx", "RiskKernel.h"],
+    srcs = ["RiskKernel.ixx"],        # <--- MOVED TO srcs
+    hdrs = ["RiskKernel.h"],
     copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
+    #hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
+    srcs = ["MacroAlphaEngine.ixx"],  # <--- MOVED TO srcs
+    hdrs = ["MacroAlphaEngine.h"],
     deps = [":risk_kernel"],
     copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
