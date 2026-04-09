@@ -2,14 +2,17 @@
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
+# Define the common flags once to ensure consistency
+CPP26_FLAGS = select({
+    "@platforms//os:linux":   ["-std=c++26", "-fimplicit-modules", "-fexperimental-library"],
+    "@platforms//os:windows": ["/std:c++latest"],
+})
+
 cc_library(
     name = "risk_kernel",
     srcs = [],
     hdrs = ["RiskKernel.ixx"],
-    copts = select({
-        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
-        "@platforms//os:windows": ["/std:c++latest"],
-    }),
+	copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
@@ -18,10 +21,7 @@ cc_library(
     srcs = [],
     hdrs = ["MacroAlphaEngine.ixx"],
     deps = [":risk_kernel"],
-    copts = select({
-        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
-        "@platforms//os:windows": ["/std:c++latest"],
-    }),
+    copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
@@ -39,6 +39,8 @@ cc_binary(
     srcs = ["bindings.cpp"],
     linkshared = True,
     linkstatic = False,
+    # Add flags here too to ensure bindings.cpp compiles with C++26
+    copts = CPP26_FLAGS,
     deps = [
         ":macro_alpha_engine",
         "@nanobind",  # Bzlmod shorthand for the default target in the nanobind repo
@@ -49,9 +51,9 @@ cc_binary(
 cc_test(
     name = "alpha_engine_test",
     srcs = ["alpha_engine_test.cpp"],
-    deps = [":macro_alpha_engine", "@googletest//:gtest_main"],
-    copts = select({
-        "@platforms//os:linux":   ["-fmodules-ts", "-fexperimental-library", "-std=c++2b"],
-        "@platforms//os:windows": ["/std:c++latest"],
-    }),
+    deps = [
+        ":macro_alpha_engine", 
+        "@googletest//:gtest_main"
+    ],
+    copts = CPP26_FLAGS,
 )
