@@ -11,16 +11,6 @@ build --incompatible_enable_cc_toolchain_resolution
 build:linux --cxxopt=-std=c++26
 build:linux --copt=-march=native
 build:linux --copt=-fexperimental-library
-#build:linux --linkopt=-stdlib=libc++
-#build:linux --linkopt=-lc++abi
-#build:linux --action_env=CC=clang-19
-#build:linux --action_env=CXX=clang++-19
-# CRITICAL: -stdlib=libc++ must be in BOTH --cxxopt AND --linkopt.
-# --cxxopt ensures ALL C++ translation units (including GoogleTest) are
-# compiled against libc++ headers/ABI. Without this, GoogleTest is compiled
-# with libstdc++ (Ubuntu default) while the engine uses libc++, causing an
-# ABI mismatch and hundreds of undefined-reference errors at link time.
-build:linux --cxxopt=-stdlib=libc++
 build:linux --linkopt=-stdlib=libc++
 build:linux --linkopt=-lc++abi
 build:linux --action_env=CC=clang-19

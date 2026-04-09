@@ -99,7 +99,17 @@ jobs:
             --config=linux \
             --action_env=CC=clang-19 \
             --action_env=CXX=clang++-19 \
+            --action_env=BAZEL_CXXOPTS="-std=c++26 -fexperimental-library" \
+            --action_env=BAZEL_LINKOPTS="-lstdc++ -lm -lpthread -ldl" \
             --spawn_strategy=local \
+            --define=nanobind_opt=separate \
+            --cxxopt="-std=c++26" \
+            --cxxopt="-fexperimental-library" \
+            --linkopt="-lstdc++" \
+            --linkopt="-lm" \
+            --linkopt="-lpthread" \
+            --linkopt="-ldl" \
+            --linkopt="-Wl,--allow-multiple-definition" \
             --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
