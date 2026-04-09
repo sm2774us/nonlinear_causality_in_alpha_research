@@ -1,5 +1,6 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
 cc_library(
     name = "risk_kernel",
@@ -24,12 +25,24 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+#cc_binary(
+#    name = "alpha_engine_cpp.so",
+#    srcs = ["bindings.cpp"],
+#    deps = [":macro_alpha_engine", "@nanobind//:nanobind"],
+#    linkshared = True,
+#    linkstatic = False,
+#    visibility = ["//visibility:public"],
+#)
+
 cc_binary(
     name = "alpha_engine_cpp.so",
     srcs = ["bindings.cpp"],
-    deps = [":macro_alpha_engine", "@nanobind//:nanobind"],
     linkshared = True,
     linkstatic = False,
+    deps = [
+        ":macro_alpha_engine",
+        "@nanobind",  # Bzlmod shorthand for the default target in the nanobind repo
+    ],
     visibility = ["//visibility:public"],
 )
 

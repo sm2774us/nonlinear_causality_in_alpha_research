@@ -8,15 +8,15 @@ module(
     compatibility_level = 1,
 )
 
-# ── BCR-VALID DEPENDENCIES ───────────────────────────────────────────────────
-bazel_dep(name = "rules_python",           version = "0.31.0")
-bazel_dep(name = "googletest",             version = "1.14.0")
-#bazel_dep(name = "nanobind",               version = "2.0.0")
-#bazel_dep(name = "hedron_compile_commands", version = "0.0.0")
+# ── ALIGNED BCR DEPENDENCIES ────────────────────────────────────────────────
+# Updated to match the versions actually resolved in your logs to stop warnings
+bazel_dep(name = "rules_python",           version = "1.7.0")
+bazel_dep(name = "googletest",             version = "1.17.0")
+bazel_dep(name = "bazel_skylib",           version = "1.7.1")
 
-# ── NON-BCR DEPENDENCIES (REQUIRE OVERRIDES) ─────────────────────────────────
+# ── NON-BCR / LEGACY DEPENDENCIES ──────────────────────────────────────────
 
-# 1. Hedron: Requires git_override (this one has a MODULE.bazel in its repo)
+# 1. Hedron: Direct git override
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(
     module_name = "hedron_compile_commands",
@@ -24,12 +24,9 @@ git_override(
     commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
 )
 
-# 2. Nanobind: Lacks a MODULE.bazel. We must use a legacy extension.
-# We remove the bazel_dep(name = "nanobind") because it isn't a "module".
-non_module_deps = use_extension("@rules_python//python/extensions:python.bzl", "python") # Dummy or custom
-# Better yet, use the built-in way to inject legacy repos:
+# 2. Nanobind: Legacy Archive (Injected into Bzlmod)
+# This uses the http_archive rule but exposes it to the module graph
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
 http_archive(
     name = "nanobind",
     urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
@@ -37,7 +34,7 @@ http_archive(
     integrity = "sha256-LnBydITtt6hkXSb2qfZzUqZoZXw03npgO/nGjly/j/k=",
 )
 
-# ── Python 3.13 toolchain ──────────────────────────────────────────────────────
+# ── Python 3.13 Toolchain ─────────────────────────────────────────────────────
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.13")
 
