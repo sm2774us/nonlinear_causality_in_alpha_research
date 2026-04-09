@@ -29,8 +29,6 @@ jobs:
       # bazel-7.4.0 is NOT in ubuntu-24.04 apt — use Bazelisk action instead
       - name: Set up Bazel
         uses: bazelbuild/setup-bazelisk@v3
-        with:
-          bazel-version: 7.4.0 # Pin to a stable LTS version
 
       # python3.13 is NOT in ubuntu-24.04 standard apt — use GHA action
       - name: Set up Python 3.13
@@ -51,35 +49,17 @@ jobs:
       - name: Install Python dependencies
         run: pip install polars numpy scipy pytest pytest-cov
 
-      - name: Build C++26 SIMD engine (via CMake Delegation)
-        id: cpp_build
+      - name: Build and Test Alpha Engine
         run: |
-          bazel build //src/alpha_engine:alpha_engine_delegated \
-            --config=linux \
-            --spawn_strategy=local
+          # Build via CMake delegation
+          bazel build //src/alpha_engine:alpha_engine_delegated --config=linux --spawn_strategy=local
+          
+          # 1. Deploy the .so (The find command is the only reliable way with foreign_cc)
+          find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" -exec cp {} src/research/alpha_engine_cpp.so \;
+          echo "Shared library deployed."
 
-      - name: Deploy shared library
-        run: |
-          # rules_foreign_cc creates a nested directory structure. 
-          # We locate the .so and move it to the research folder as a .so
-          # so that 'import alpha_engine_cpp' works in Python 3.13.
-          LIB_PATH=$(find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" | head -n 1)
-          if [ -f "$LIB_PATH" ]; then
-            cp "$LIB_PATH" src/research/alpha_engine_cpp.so
-            echo "Successfully deployed $LIB_PATH to src/research/"
-          else
-            echo "Build artifact libalpha_engine_cpp.so not found!"
-            exit 1
-          fi
-
-      - name: Run C++ Tests
-        run: |
-          # We call the sh_test target defined in the BUILD file.
-          # This is cleaner than 'find -exec' because it uses Bazel's 
-          # test isolation and logging.
-          bazel test //src/alpha_engine:alpha_engine_test \
-            --config=linux \
-            --test_output=all
+          # 2. Run the test via Bazel (which calls the test_wrapper.sh)
+          bazel test //src/alpha_engine:alpha_engine_test --config=linux --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
       - name: Run Python tests

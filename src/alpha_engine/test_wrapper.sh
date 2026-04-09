@@ -1,11 +1,14 @@
 #!/bin/bash
-# Find the test binary within the runfiles directory
-TEST_BIN=$(find . -name "alpha_engine_test" -type f -executable | head -n 1)
+# Move to the execution directory
+cd "$(dirname "$0")"
 
-if [ -z "$TEST_BIN" ]; then
-    echo "Error: alpha_engine_test binary not found in runfiles."
+# Find the binary in the sandboxed runfiles
+TARGET_BIN=$(find . -name "alpha_engine_test" -type f -executable | head -n 1)
+
+if [ -z "$TARGET_BIN" ]; then
+    echo "CRITICAL ERROR: alpha_engine_test not found."
     exit 1
 fi
 
-echo "Executing: $TEST_BIN"
-exec "$TEST_BIN"
+echo "Running Alpha Engine Test: $TARGET_BIN"
+exec "$TARGET_BIN"

@@ -1,7 +1,7 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2 (Delegated to CMake)
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
-# 1. Group all files needed for the module build
+# 1. Group files
 filegroup(
     name = "engine_srcs",
     srcs = [
@@ -10,40 +10,39 @@ filegroup(
         "MacroAlphaEngine.ixx",
         "bindings.cpp",
         "alpha_engine_test.cpp",
+        "test_wrapper.sh",
     ],
 )
 
-# 2. Delegate to CMake
+# 2. Hardened CMake Delegation
 cmake(
     name = "alpha_engine_delegated",
     cache_entries = {
         "CMAKE_CXX_COMPILER": "clang++-19",
         "CMAKE_CXX_STANDARD": "26",
-        # Force CMake to prioritize the headers/static libs in the Bazel sandbox
         "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$",
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+        # INJECTING THE FLAGS DIRECTLY INTO THE CMAKE DRIVER:
+        "CMAKE_CXX_FLAGS": "-fimplicit-modules -fimplicit-module-maps -fbuiltin-module-map -fexperimental-library -stdlib=libc++",
+        "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++ -lc++abi -Wl,--allow-multiple-definition",
+        "CMAKE_SHARED_LINKER_FLAGS": "-stdlib=libc++ -lc++abi -Wl,--allow-multiple-definition",
     },
     lib_source = ":engine_srcs",
-    # Produce the .so for Python and the binary for GoogleTest
     out_shared_libs = ["libalpha_engine_cpp.so"],
     out_binaries = ["alpha_engine_test"],
     deps = [
-        # CRITICAL: We use the specific nanobind target.
-        # This prevents rules_foreign_cc from seeing both 'nb_combined' and 'common'.
-        "@nanobind//:nanobind",
+        "@nanobind//:nanobind", 
         "@googletest//:gtest",
     ],
 )
 
-# 3. Create the shim for the rest of the Bazel graph
 alias(
     name = "alpha_engine_cpp.so",
     actual = ":alpha_engine_delegated",
 )
 
-# 4. Expose the test binary as a runnable Bazel test
 sh_test(
     name = "alpha_engine_test",
-    srcs = ["test_wrapper.sh"], # Simple script to run the output binary
+    srcs = ["test_wrapper.sh"],
     data = [":alpha_engine_delegated"],
 )
