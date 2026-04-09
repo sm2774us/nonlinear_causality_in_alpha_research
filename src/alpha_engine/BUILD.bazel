@@ -7,25 +7,28 @@ CPP26_FLAGS = select({
         "-std=c++26", 
         "-fimplicit-modules", 
         "-fexperimental-library",
-        "-Wno-missing-braces" # To handle std::array initialization warnings
+        "-xc++",                # Force C++ interpretation for .ixx
+        "-Wno-missing-braces",  # Suppress std::array subobject warnings
     ],
-    "@platforms//os:windows": ["/std:c++latest"],
+    "@platforms//os:windows": [
+        "/std:c++latest",
+        "/wd4849",              # MSVC equivalent for certain module warnings
+    ],
 })
 
 cc_library(
     name = "risk_kernel",
-    # 1. The .ixx is a SOURCE file. It is compiled into a module.
-    srcs = ["RiskKernel.ixx"], 
-    # 2. The .h is the HEADER. It is what bindings.cpp and other C++ files include.
-    hdrs = ["RiskKernel.h"],   
+    srcs = [],
+    # We put .ixx in hdrs so Bazel doesn't complain about the extension
+    hdrs = ["RiskKernel.ixx", "RiskKernel.h"], 
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    srcs = ["MacroAlphaEngine.ixx"],
-    hdrs = ["MacroAlphaEngine.h"],
+    srcs = [],
+    hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
     deps = [":risk_kernel"],
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
@@ -39,7 +42,7 @@ cc_binary(
     copts = CPP26_FLAGS,
     deps = [
         ":macro_alpha_engine",
-        "@nanobind", # Ensure nanobind is a direct dependency
+        "@nanobind",
     ],
 )
 
