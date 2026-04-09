@@ -34,27 +34,14 @@ namespace alpha_pod::test {
 
 using namespace alpha_pod;
 
-// ── Clean Helpers ──────────────────────────────────────────────────────────
-static float vec_max_abs(const std::vector<float>& v) {
-    float m = 0.0f;
-    for (float x : v) m = std::max(m, std::abs(x));
-    return m;
-}
-
-static float vec_mean(const std::vector<float>& v) {
-    if (v.empty()) return 0.0f;
-    return std::accumulate(v.begin(), v.end(), 0.0f) / static_cast<float>(v.size());
-}
-
 static bool has_no_nan_inf(const std::vector<float>& v) {
     for (float x : v) if (std::isnan(x) || std::isinf(x)) return false;
     return true;
 }
 
-// ── Tests ──────────────────────────────────────────────────────────────────
+// ── Test Cases ──────────────────────────────────────────────────────────────
 
 TEST(RankZScoreSIMD, SIMDAlignmentTest) {
-    // 128 elements to ensure the SIMD path is fully exercised
     std::vector<float> alpha(128);
     std::iota(alpha.begin(), alpha.end(), -64.0f);
     float clip = kRegimeTable[0].zscore_clip;
@@ -73,7 +60,7 @@ TEST(NonlinearInteractionCap, VolPenaltyCheck) {
     RiskKernel::apply_nonlinear_interaction_cap(alpha_lv, vol_lv, kRegimeTable[1].vol_target, kRegimeTable[1].weight_cap);
     RiskKernel::apply_nonlinear_interaction_cap(alpha_hv, vol_hv, kRegimeTable[1].vol_target, kRegimeTable[1].weight_cap);
 
-    EXPECT_GT(alpha_lv[0], alpha_hv[0]) << "Nonlinear causality penalty failed.";
+    EXPECT_GT(alpha_lv[0], alpha_hv[0]);
 }
 
 TEST(MacroAlphaEngineV2, RegimeLogicCheck) {
@@ -96,7 +83,10 @@ TEST(MacroAlphaEngineV2, StressVsCalm) {
     eng_c.run_pipeline(alpha_c, vol, Regime::CALM);
     eng_s.run_pipeline(alpha_s, vol, Regime::STRESS);
 
-    EXPECT_GT(vec_max_abs(alpha_c), vec_max_abs(alpha_s));
+    // Get max absolute values for comparison
+    auto max_c = *std::max_element(alpha_c.begin(), alpha_c.end());
+    auto max_s = *std::max_element(alpha_s.begin(), alpha_s.end());
+    EXPECT_GT(max_c, max_s);
 }
 
 } // namespace alpha_pod::test
