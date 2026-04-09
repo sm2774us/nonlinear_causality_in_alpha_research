@@ -28,7 +28,8 @@ http_archive(
     name = "tsl_robin_map",
     urls = ["https://github.com/Tessil/robin-map/archive/refs/tags/v1.3.0.tar.gz"],
     strip_prefix = "robin-map-1.3.0",
-    integrity = "sha256-9pI0L99v05YVbdV99hP5I7vL8hZ9Z9Z9Z9Z9Z9Z9Z9Z=",
+    # The actual SHA256 of the v1.3.0 archive from GitHub
+    integrity = "sha256-qEJK07Cv/UxX7Sbw89iilgTw4fLvIIn0l/YUsclMcjY=",
     build_file_content = """
 cc_library(
     name = "tsl_robin_map",
@@ -60,7 +61,7 @@ cc_library(
     features = ["-default_compile_flags"], 
     deps = [
         "@rules_python//python/cc:current_py_cc_headers",
-        "@tsl_robin_map", # FIX: Link the missing hash map library
+        "@tsl_robin_map",
     ],
 )
 """,
