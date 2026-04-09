@@ -101,10 +101,12 @@ jobs:
             --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
-            --linkopt=-Wl,--allow-multiple-definition \
             --cxxopt="-std=c++26" \
+            --cxxopt="-stdlib=stdc++" \
+            --linkopt="-stdlib=stdc++" \
             --linkopt="-lstdc++" \
             --linkopt="-lm" \
+            --linkopt="-lpthread" \
             --linkopt="-Wl,--allow-multiple-definition" \
             --test_output=all
 
