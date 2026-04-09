@@ -2,7 +2,6 @@
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
-# Define the common flags once to ensure consistency
 CPP26_FLAGS = select({
     "@platforms//os:linux":   ["-std=c++26", "-fimplicit-modules", "-fexperimental-library"],
     "@platforms//os:windows": ["/std:c++latest"],
@@ -10,45 +9,31 @@ CPP26_FLAGS = select({
 
 cc_library(
     name = "risk_kernel",
-    #srcs = [],
-    #hdrs = ["RiskKernel.ixx"],
-    srcs = ["RiskKernel.ixx"],   # Treat module as source
-    hdrs = ["RiskKernel.h"],     # The bridge header
-	copts = CPP26_FLAGS,
+    srcs = [], 
+    # Move .ixx here. Bazel allows more extensions in hdrs than in srcs.
+    hdrs = ["RiskKernel.ixx", "RiskKernel.h"],     
+    copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    #srcs = [],
-    #hdrs = ["MacroAlphaEngine.ixx"],
-    #deps = [":risk_kernel"],
-    srcs = ["MacroAlphaEngine.ixx"], 
-    hdrs = ["MacroAlphaEngine.h"],   
-    deps = [":risk_kernel"],        # Inherit RiskKernel instead of re-listing its files
+    srcs = [],
+    hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],   
+    deps = [":risk_kernel"],        
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
-
-#cc_binary(
-#    name = "alpha_engine_cpp.so",
-#    srcs = ["bindings.cpp"],
-#    deps = [":macro_alpha_engine", "@nanobind//:nanobind"],
-#    linkshared = True,
-#    linkstatic = False,
-#    visibility = ["//visibility:public"],
-#)
 
 cc_binary(
     name = "alpha_engine_cpp.so",
     srcs = ["bindings.cpp"],
     linkshared = True,
     linkstatic = False,
-    # Add flags here too to ensure bindings.cpp compiles with C++26
     copts = CPP26_FLAGS,
     deps = [
         ":macro_alpha_engine",
-        "@nanobind",  # Bzlmod shorthand for the default target in the nanobind repo
+        "@nanobind", 
     ],
     visibility = ["//visibility:public"],
 )
