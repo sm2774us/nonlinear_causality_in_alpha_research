@@ -11,10 +11,7 @@ build --incompatible_enable_cc_toolchain_resolution
 build:linux --cxxopt=-std=c++26
 build:linux --cxxopt=-stdlib=libc++        # <--- THIS IS THE KEY FIX FOR 'import std'
 build:linux --copt=-march=native
-build:linux --copt=-fexperimental-library  # Required for std.simd
-
-# Add this to help Clang resolve the built-in module maps for libc++
-build:linux --cxxopt=-fbuiltin-module-map
+build:linux --copt=-fexperimental-library  # KEEP THIS: It's the global "on" switch. Required for std.simd
 
 # LINKER FLAGS:
 build:linux --linkopt=-stdlib=libc++       # Ensures the binary finds the correct STL

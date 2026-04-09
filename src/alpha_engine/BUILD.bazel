@@ -11,6 +11,7 @@ STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
         "-fimplicit-modules",
         "-fimplicit-module-maps",
+        "-fbuiltin-module-map",  # FIX: Required for Clang to find internal stdint/stddef modules. THIS solves the 'module not provided' error.
         "-xc++", 
         "-Wno-missing-braces",
         "-Wno-unused-variable",
