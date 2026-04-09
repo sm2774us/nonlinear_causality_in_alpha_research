@@ -1,20 +1,11 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2 (Delegated to CMake)
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
-# 1. Group files
 filegroup(
     name = "engine_srcs",
-    srcs = [
-        "CMakeLists.txt",
-        "RiskKernel.ixx",
-        "MacroAlphaEngine.ixx",
-        "bindings.cpp",
-        "alpha_engine_test.cpp",
-        "test_wrapper.sh",
-    ],
+    srcs = glob(["**"]),
 )
 
-# 2. Hardened CMake Delegation
 cmake(
     name = "alpha_engine_delegated",
     cache_entries = {
@@ -22,17 +13,14 @@ cmake(
         "CMAKE_CXX_STANDARD": "26",
         "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$",
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-        # INJECTING THE FLAGS DIRECTLY INTO THE CMAKE DRIVER:
-        "CMAKE_CXX_FLAGS": "-fimplicit-modules -fimplicit-module-maps -fbuiltin-module-map -fexperimental-library -stdlib=libc++",
-        "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++ -lc++abi -Wl,--allow-multiple-definition",
-        "CMAKE_SHARED_LINKER_FLAGS": "-stdlib=libc++ -lc++abi -Wl,--allow-multiple-definition",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -fexperimental-library",
     },
     lib_source = ":engine_srcs",
     out_shared_libs = ["libalpha_engine_cpp.so"],
     out_binaries = ["alpha_engine_test"],
     deps = [
-        "@nanobind//:nanobind", 
-        "@googletest//:gtest",
+        "@nanobind//:nanobind",
+        "@googletest//:gtest_main",
     ],
 )
 
