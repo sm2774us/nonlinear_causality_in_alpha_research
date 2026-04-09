@@ -51,17 +51,17 @@ jobs:
 
       - name: Build and Deploy Alpha Engine
         run: |
-          # 1. Clean to prevent stale module/linker artifacts
+          # 1. Purge stale module/linker artifacts
           bazel clean --expunge
           
           # 2. Build via CMake delegation
           bazel build //src/alpha_engine:alpha_engine_delegated --config=linux --spawn_strategy=local
           
-          # 3. Locate the .so regardless of the internal folder name
+          # 3. Discover and deploy the .so
           SO_FILE=$(find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" | head -n 1)
           cp "$SO_FILE" src/research/alpha_engine_cpp.so
           
-          # 4. Standard Bazel test run
+          # 4. Standard Bazel test execution
           bazel test //src/alpha_engine:alpha_engine_test --config=linux --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present

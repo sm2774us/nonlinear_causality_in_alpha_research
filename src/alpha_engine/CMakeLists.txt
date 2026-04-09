@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. CLEAN FLAGS: Remove -fimplicit-modules to stop the 'pthread.h' warnings.
-# Bazel's toolchain already provides the necessary environment.
+# Bazel's toolchain already provides the necessary module maps for libc++.
 add_compile_options(-fexperimental-library -stdlib=libc++)
 
 # 2. Engine Library (Static)
@@ -21,8 +21,7 @@ target_sources(alpha_engine
 add_library(alpha_engine_cpp SHARED bindings.cpp)
 target_link_libraries(alpha_engine_cpp PRIVATE alpha_engine)
 
-# 4. THE PLUG: Nuclear option for the 'multiple definition' linker error.
-# This forces the linker to accept the first symbol it finds and move on.
+# 4. THE PLUG: Forced symbol reconciliation for nanobind.
 if(NOT WIN32)
     target_link_options(alpha_engine_cpp PRIVATE "-Wl,--allow-multiple-definition")
 endif()
