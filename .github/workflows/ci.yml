@@ -73,7 +73,8 @@ jobs:
             --action_env=CC=clang-19 \
             --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
-            --define=nanobind_opt=separate    # <--- THE LINKER RESOLUTION
+            --define=nanobind_opt=separate \
+            --linkopt=-Wl,--allow-multiple-definition
 
       - name: Deploy shared library
         if: steps.cpp_build.outcome == 'success'
@@ -100,6 +101,7 @@ jobs:
             --action_env=CXX=clang++-19 \
             --spawn_strategy=local \
             --define=nanobind_opt=separate \
+            --linkopt=-Wl,--allow-multiple-definition \
             --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
