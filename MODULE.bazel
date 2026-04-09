@@ -22,7 +22,7 @@ git_override(
     commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
 )
 
-# 2. Nanobind: Legacy Archive with Injected BUILD logic
+# 2. Nanobind: Final corrected injection with internal header paths
 # We use http_archive via use_repo_rule to avoid the "No MODULE.bazel" error.
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
@@ -34,8 +34,14 @@ http_archive(
 cc_library(
     name = "nanobind",
     srcs = glob(["src/*.cpp"]),
-    hdrs = glob(["include/nanobind/**/*.h"]),
-    includes = ["include"],
+    hdrs = glob([
+        "include/nanobind/**/*.h",
+        "src/*.h",  # Include internal headers needed by the .cpp files
+    ]),
+    includes = [
+        "include",
+        "src",      # Allows #include "nb_internals.h" to work
+    ],
     visibility = ["//visibility:public"],
     copts = ["-std=c++17"],
     features = ["-default_compile_flags"], 
