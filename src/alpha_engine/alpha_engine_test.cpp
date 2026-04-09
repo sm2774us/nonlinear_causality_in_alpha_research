@@ -25,8 +25,10 @@
 #include <vector>
 #include <span>
 
-import AlphaPod.MacroAlphaEngine;
-import AlphaPod.RiskKernel;
+//import AlphaPod.MacroAlphaEngine;
+//import AlphaPod.RiskKernel;
+#include "MacroAlphaEngine.h" // Synchronize with the bridge
+#include "RiskKernel.h" // Synchronize with the bridge
 
 namespace alpha_pod::test {
 

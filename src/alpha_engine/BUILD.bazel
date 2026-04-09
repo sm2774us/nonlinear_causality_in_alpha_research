@@ -10,17 +10,22 @@ CPP26_FLAGS = select({
 
 cc_library(
     name = "risk_kernel",
-    srcs = [],
-    hdrs = ["RiskKernel.ixx"],
+    #srcs = [],
+    #hdrs = ["RiskKernel.ixx"],
+    srcs = ["RiskKernel.ixx"],   # Treat module as source
+    hdrs = ["RiskKernel.h"],     # The bridge header
 	copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    srcs = [],
-    hdrs = ["MacroAlphaEngine.ixx"],
-    deps = [":risk_kernel"],
+    #srcs = [],
+    #hdrs = ["MacroAlphaEngine.ixx"],
+    #deps = [":risk_kernel"],
+    srcs = ["MacroAlphaEngine.ixx"], 
+    hdrs = ["MacroAlphaEngine.h"],   
+    deps = [":risk_kernel"],        # Inherit RiskKernel instead of re-listing its files
     copts = CPP26_FLAGS,
     visibility = ["//visibility:public"],
 )

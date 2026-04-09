@@ -26,8 +26,10 @@
 //   engine.run_pipeline(alpha, vol, alpha_pod::Regime::STRESS);
 
 export module AlphaPod.MacroAlphaEngine;
+#include "MacroAlphaEngine.h" // Synchronize with the bridge
 
-import AlphaPod.RiskKernel;
+//import AlphaPod.RiskKernel;
+#include "RiskKernel.h" // Synchronize with the bridge
 import std;
 
 namespace alpha_pod {

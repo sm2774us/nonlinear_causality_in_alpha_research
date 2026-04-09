@@ -29,6 +29,7 @@
 // Requires: Clang-19+ or MSVC 19.40+ with C++26 / std::simd P1928.
 
 export module AlphaPod.RiskKernel;
+#include "RiskKernel.h" // Synchronize with the bridge
 
 import std;
 import std.simd;
