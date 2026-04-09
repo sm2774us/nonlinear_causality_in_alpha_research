@@ -42,6 +42,9 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
             clang-19 libc++-19-dev libc++abi-19-dev
+          # Link clang-19 as the default 'clang' so Bazel finds it easily
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
 
       - name: Install Python dependencies
         run: pip install polars numpy scipy pytest pytest-cov
@@ -51,7 +54,16 @@ jobs:
       - name: Build C++26 SIMD engine
         id: cpp_build
         continue-on-error: true
-        run: bazel build //src/alpha_engine:alpha_engine_cpp.so --config=linux
+        # ADD THESE ENV VARS: CC and CXX are the standard way to tell Bazel which compiler to use.
+        # BAZEL_CXXOPTS helps ensure the experimental SIMD headers are found.
+        env:
+          CC: clang-19
+          CXX: clang++-19
+        run: |
+          bazel build //src/alpha_engine:alpha_engine_cpp.so \
+            --config=linux \
+            --action_env=CC=clang-19 \
+            --action_env=CXX=clang++-19
 
       - name: Deploy shared library
         if: steps.cpp_build.outcome == 'success'

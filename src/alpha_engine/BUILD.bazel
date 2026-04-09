@@ -2,50 +2,45 @@
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
-# 1. Flags for your core Engine (.ixx logic)
-ENGINE_FLAGS = select({
+# FLAGS SET A: For your core Engine logic (.ixx files)
+# These include the "Force C++" flag (-xc++) which is needed for .ixx extensions
+# but is POISONOUS to nanobind's internal includes.
+STRICT_MODULE_FLAGS = select({
     "@platforms//os:linux": [
         "-std=c++26", 
         "-fimplicit-modules", 
         "-fexperimental-library",
-        "-xc++",                # Force C++ interpretation for .ixx
-        "-Wno-missing-braces",  # Suppress std::array subobject warnings
+        "-xc++", 
+        "-Wno-missing-braces",
     ],
-    "@platforms//os:windows": [
-        "/std:c++latest",
-        "/wd4849",              # MSVC equivalent for certain module warnings
-    ],
+    "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
-# 2. Flags for the Bindings (No -xc++ here!)
+# FLAGS SET B: For the Python Bindings and Tests
+# We remove "-xc++" so Clang treats .cpp files as normal source units,
+# allowing nanobind to resolve its internal #include "nb_internals.cpp" correctly.
 BINDING_FLAGS = select({
     "@platforms//os:linux": [
         "-std=c++26", 
         "-fimplicit-modules", 
         "-fexperimental-library",
-        "-Wno-missing-braces",  # Safe to keep
+        "-Wno-missing-braces",
     ],
-    "@platforms//os:windows": [
-        "/std:c++latest",
-        "/wd4849",
-    ],
+    "@platforms//os:windows": ["/std:c++latest", "/wd4849"],
 })
 
 cc_library(
     name = "risk_kernel",
-    srcs = [],
-    # We put .ixx in hdrs so Bazel doesn't complain about the extension
     hdrs = ["RiskKernel.ixx", "RiskKernel.h"], 
-    copts = ENGINE_FLAGS,
+    copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "macro_alpha_engine",
-    srcs = [],
     hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
     deps = [":risk_kernel"],
-    copts = ENGINE_FLAGS,
+    copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
 )
 
@@ -54,9 +49,7 @@ cc_binary(
     srcs = ["bindings.cpp"],
     linkshared = True,
     linkstatic = False,
-    # CRITICAL: We do NOT use ENGINE_FLAGS here because nanobind 
-    # headers are sensitive to the -xc++ flag during the binding phase.
-	copts = BINDING_FLAGS, # <--- Clean cross-platform flags
+    copts = BINDING_FLAGS, # Use clean flags to keep nanobind happy
     deps = [
         ":macro_alpha_engine",
         "@nanobind", 
@@ -70,5 +63,5 @@ cc_test(
         ":macro_alpha_engine", 
         "@googletest//:gtest_main"
     ],
-    copts = ENGINE_FLAGS,
+    copts = BINDING_FLAGS, # Use clean flags for the test runner
 )
