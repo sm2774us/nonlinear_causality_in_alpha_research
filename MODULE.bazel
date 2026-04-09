@@ -16,20 +16,25 @@ bazel_dep(name = "googletest",             version = "1.14.0")
 
 # ── NON-BCR DEPENDENCIES (REQUIRE OVERRIDES) ─────────────────────────────────
 
-# 1. Nanobind: Must pull from GitHub release tarball
-bazel_dep(name = "nanobind",               version = "2.0.0")
-archive_override(
-    module_name = "nanobind",
-    urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
-    strip_prefix = "nanobind-2.0.0",
-)
-
-# 2. Hedron: Must pull from GitHub via git_override
+# 1. Hedron: Requires git_override (this one has a MODULE.bazel in its repo)
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(
     module_name = "hedron_compile_commands",
     remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
     commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
+)
+
+# 2. Nanobind: Lacks a MODULE.bazel. We must use a legacy extension.
+# We remove the bazel_dep(name = "nanobind") because it isn't a "module".
+non_module_deps = use_extension("@rules_python//python/extensions:python.bzl", "python") # Dummy or custom
+# Better yet, use the built-in way to inject legacy repos:
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "nanobind",
+    urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
+    strip_prefix = "nanobind-2.0.0",
+    integrity = "sha256-LnBydITtt6hkXSb2qfZzUqZoZXw03npgO/nGjly/j/k=",
 )
 
 # ── Python 3.13 toolchain ──────────────────────────────────────────────────────
