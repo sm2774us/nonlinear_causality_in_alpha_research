@@ -46,13 +46,26 @@ MacroAlphaEngine::run_pipeline(
     std::span<const float> f_vol,
     Regime                 regime
 ) const noexcept {
-    const float clip = kRegimeTable[static_cast<int>(regime)].zscore_clip;
-    const float vt   = kRegimeTable[static_cast<int>(regime)].vol_target;
-    const float cap  = kRegimeTable[static_cast<int>(regime)].weight_cap;
+    // Here we use the table from the imported RiskKernel module
+    const auto& params = kRegimeTable[static_cast<int>(regime)];
 
+    // const float clip = kRegimeTable[static_cast<int>(regime)].zscore_clip;
+    // const float vt   = kRegimeTable[static_cast<int>(regime)].vol_target;
+    // const float cap  = kRegimeTable[static_cast<int>(regime)].weight_cap;
+    const float clip = params.zscore_clip;
+    const float vt   = params.vol_target;
+    const float cap  = params.weight_cap;
+
+    // Step 1: Rank-based z-score (regime-specific clip)
     if (auto r = RiskKernel::rank_zscore_simd(alpha, clip); !r) return r;
+
+    // Step 2: Regime-conditional vol scaling
     if (auto r = RiskKernel::apply_vol_scaling_regime(alpha, f_vol, regime); !r) return r;
+
+    // Step 3: Nonlinear interaction cap (alpha × vol → tighter cap for high-vol assets)
     if (auto r = RiskKernel::apply_nonlinear_interaction_cap(alpha, f_vol, vt, cap); !r) return r;
+
+    // Step 4: Hard regime-specific circuit breaker
     if (auto r = RiskKernel::apply_circuit_breaker_regime(alpha, regime); !r) return r;
 
     return {};

@@ -4,6 +4,9 @@
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_binary")
 
+# Crucial: Clang 19 requires the resource dir to find internal module maps
+RESOURCE_DIR = "-I/usr/lib/llvm-19/lib/clang/19/include"
+
 # FLAGS SET A: For core Module logic
 # Since .bazelrc handles stdlib and c++26, we only need the module-mapping
 # and the -xc++ "force" flag to treat renamed .cpp files as modules.
@@ -12,6 +15,7 @@ STRICT_MODULE_FLAGS = select({
         "-fimplicit-modules",
         "-fimplicit-module-maps",
         "-fbuiltin-module-map",  # FIX: Required for Clang to find internal stdint/stddef modules. THIS solves the 'module not provided' error.
+        RESOURCE_DIR,
         "-xc++", 
         "-Wno-missing-braces",
         "-Wno-unused-variable",
