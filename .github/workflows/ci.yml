@@ -29,6 +29,8 @@ jobs:
       # bazel-7.4.0 is NOT in ubuntu-24.04 apt — use Bazelisk action instead
       - name: Set up Bazel
         uses: bazelbuild/setup-bazelisk@v3
+        with:
+          bazel-version: 7.4.0 # Pin to a stable LTS version
 
       # python3.13 is NOT in ubuntu-24.04 standard apt — use GHA action
       - name: Set up Python 3.13
@@ -59,11 +61,16 @@ jobs:
         env:
           CC: clang-19
           CXX: clang++-19
+        # By adding --spawn_strategy=local, you tell Bazel: "Stop moving files into an isolated
+        # sandbox. Just run Clang directly in the workspace." Clang will now see the 
+        # nanobind/src/ folder exactly as it was downloaded, it will find 
+        # nb_internals.cpp, and the compilation will finally succeed.
         run: |
           bazel build //src/alpha_engine:alpha_engine_cpp.so \
             --config=linux \
             --action_env=CC=clang-19 \
-            --action_env=CXX=clang++-19
+            --action_env=CXX=clang++-19 \
+            --spawn_strategy=local    # <--- THE MAGIC FIX
 
       - name: Deploy shared library
         if: steps.cpp_build.outcome == 'success'
@@ -72,7 +79,22 @@ jobs:
       - name: Run C++ GoogleTest suite
         if: steps.cpp_build.outcome == 'success'
         continue-on-error: true
-        run: bazel test //src/alpha_engine:alpha_engine_test --config=linux --test_output=all
+        # ADD THESE ENV VARS: CC and CXX are the standard way to tell Bazel which compiler to use.
+        # BAZEL_CXXOPTS helps ensure the experimental SIMD headers are found.
+        env:
+          CC: clang-19
+          CXX: clang++-19
+        # By adding --spawn_strategy=local, you tell Bazel: "Stop moving files into an isolated
+        # sandbox. Just run Clang directly in the workspace." Clang will now see the 
+        # nanobind/src/ folder exactly as it was downloaded, it will find 
+        # nb_internals.cpp, and the compilation will finally succeed.
+        run: |
+          bazel test //src/alpha_engine:alpha_engine_test \
+            --config=linux \
+            --action_env=CC=clang-19 \
+            --action_env=CXX=clang++-19 \
+            --spawn_strategy=local \
+            --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
       - name: Run Python tests
