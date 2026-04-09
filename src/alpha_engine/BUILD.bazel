@@ -35,14 +35,14 @@ BINDING_FLAGS = select({
 genrule(
     name = "risk_kernel_source",
     srcs = ["RiskKernel.ixx"],
-    outs = ["RiskKernel.cpp"],
+    outs = ["RiskKernel_impl.cpp"], # Renamed to avoid header collision
     cmd = "cp $< $@",
 )
 
 genrule(
     name = "macro_alpha_engine_source",
     srcs = ["MacroAlphaEngine.ixx"],
-    outs = ["MacroAlphaEngine.cpp"],
+    outs = ["MacroAlphaEngine_impl.cpp"], # Renamed to avoid header collision
     cmd = "cp $< $@",
 )
 
@@ -51,7 +51,9 @@ genrule(
 cc_library(
     name = "risk_kernel",
     #hdrs = ["RiskKernel.ixx", "RiskKernel.h"],
-    srcs = [":risk_kernel_source"], # <--- Reference the genrule name
+    # CRITICAL: We include the .h in srcs so it's copied to the sandbox 
+    # where the generated .cpp file lives.
+    srcs = [":risk_kernel_source", "RiskKernel.h"], 
     hdrs = ["RiskKernel.h"],
     copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
     visibility = ["//visibility:public"],
@@ -60,7 +62,8 @@ cc_library(
 cc_library(
     name = "macro_alpha_engine",
     #hdrs = ["MacroAlphaEngine.ixx", "MacroAlphaEngine.h"],
-    srcs = [":macro_alpha_engine_source"], # <--- Reference the genrule name
+    # CRITICAL: Include the required headers in srcs for sandbox visibility
+    srcs = [":macro_alpha_engine_source", "MacroAlphaEngine.h", "RiskKernel.h"], 
     hdrs = ["MacroAlphaEngine.h"],
     deps = [":risk_kernel"],
     copts = STRICT_MODULE_FLAGS, # Use strict flags for modules
