@@ -67,7 +67,7 @@ TEST(MacroAlphaEngineV2, RegimePipeline) {
     std::vector<float> vol(128, 0.15f);
     MacroAlphaEngine engine{0.10f, 0.20f};
     
-    // Test Stress Regime (Regime::STRESS is index 2)
+    // Stress Regime (Index 2)
     auto result = engine.run_pipeline(alpha, vol, Regime::STRESS);
     ASSERT_TRUE(result.has_value());
     
