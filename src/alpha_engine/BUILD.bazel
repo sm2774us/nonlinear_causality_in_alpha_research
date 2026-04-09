@@ -27,7 +27,9 @@ cmake(
     out_shared_libs = ["libalpha_engine_cpp.so"],
     out_binaries = ["alpha_engine_test"],
     deps = [
-        "@nanobind",
+        # FIX: Point to the specific library target to avoid 
+        # double-linking the 'combined' and 'individual' object files.
+        "@nanobind//:nanobind", 
         "@googletest//:gtest",
     ],
 )
