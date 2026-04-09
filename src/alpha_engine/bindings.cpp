@@ -12,7 +12,7 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
 
-#import AlphaPod.MacroAlphaEngine;
+//import AlphaPod.MacroAlphaEngine;
 #include "MacroAlphaEngine.h"
 
 namespace nb = nanobind;
