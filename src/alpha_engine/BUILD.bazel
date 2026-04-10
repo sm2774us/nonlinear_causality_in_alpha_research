@@ -1,5 +1,6 @@
 # src/alpha_engine/BUILD.bazel — AlphaPod v2 (Delegated to CMake)
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")  # <--- ADD THIS LINE
 
 filegroup(
     name = "engine_srcs",
