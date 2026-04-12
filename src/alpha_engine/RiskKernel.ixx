@@ -27,11 +27,27 @@
 //   No heap allocation; all operations are in-place on contiguous float spans.
 //
 // Requires: Clang-19+ or MSVC 19.40+ with C++26 / std::simd P1928.
+module; // Start of Global Module Fragment
+
+// import std;
+// import std.simd;
+
+// Standard Library Headers for C++26 compatibility in Bazel Sandbox
+#include <vector>        // For std::vector
+#include <numeric>       // For std::iota
+#include <algorithm>     // For std::sort, std::clamp
+#include <array>         // For std::array
+#include <span>          // For std::span
+#include <expected>      // For std::expected
+#include <string>        // For std::string error messages
+#include <cstddef>       // For std::size_t
+
+// SIMD Header (P1928 / C++26 experimental support)
+#include <experimental/simd>
 
 export module AlphaPod.RiskKernel;
 
-import std;
-import std.simd;
+using namespace std::experimental;
 
 namespace alpha_pod {
 
@@ -44,7 +60,7 @@ export enum class Regime : int {
     STRESS     = 2,
 };
 
-struct RegimeParams {
+export struct RegimeParams {
     float vol_target;
     float weight_cap;
     float zscore_clip;
@@ -52,7 +68,7 @@ struct RegimeParams {
 
 /// Compile-time regime parameter table.
 /// Source: calibrated against Ma & Prosperino (2023) regime characterisation.
-inline constexpr std::array<RegimeParams, 3> kRegimeTable{{
+export inline constexpr std::array<RegimeParams, 3> kRegimeTable{{
     {0.12f, 0.25f, 3.0f},   // CALM:       more aggressive, wider clip
     {0.10f, 0.20f, 3.0f},   // TRANSITION: baseline
     {0.06f, 0.12f, 2.0f},   // STRESS:     de-risk; tighter clip (fat-tail guard)
@@ -108,7 +124,7 @@ public:
             ranks[order[i]] = static_cast<float>(i);
 
         // Step 2: Normalise ranks → [-clip, +clip] via SIMD
-        using simd_t = std::simd<float>;
+        using simd_t = native_simd<float>;
         const std::size_t step = simd_t::size();
         const float scale = (N > 1) ? (2.0f * clip / static_cast<float>(N - 1)) : 0.0f;
         const simd_t s_v  = scale;
@@ -116,14 +132,55 @@ public:
         const simd_t lo   = -clip;
         const simd_t hi   =  clip;
 
+        // std::size_t i = 0;
+        // for (; i + step <= N; i += step) {
+        //     simd_t r(ranks.data() + i, element_aligned);
+        //
+        //     // Process: The standard-compliant way to clamp in SIMD TS
+        //     simd_t product = r * s_v;
+        //     simd_t val = product - o_v;
+        //
+        //     // Start with the calculated value
+        //     simd_t clamped_v = val;
+        //     // "Where the value is too low, set it to lo"
+        //     where(clamped_v < lo, clamped_v) = lo;
+        //
+        //     // "Where the value is too high, set it to hi"
+        //     where(clamped_v > hi, clamped_v) = hi;
+        //
+        //     clamped_v.copy_to(alpha.data() + i, element_aligned);
+        // }
+
         std::size_t i = 0;
         for (; i + step <= N; i += step) {
-            simd_t r(ranks.data() + i, std::element_aligned);
-            std::simd::clamp(r * s_v - o_v, lo, hi)
-                .copy_to(alpha.data() + i, std::element_aligned);
+            // 1. Initialize 'r' by loading data into it
+            simd_t r;
+            r.copy_from(ranks.data() + i, element_aligned);
+
+            simd_t val;
+
+            // 2. Combine Math and Clamp for efficiency
+            for (std::size_t n = 0; n < step; ++n) {
+                // Extract to float to avoid simd_reference errors
+                float r_lane = r[n];
+
+                // Perform math
+                float calculated = (r_lane * scale) - clip;
+
+                // Clamp (now types match perfectly: float, float, float)
+                val[n] = std::clamp(calculated, -clip, clip);
+            }
+
+            // 3. Store results
+            val.copy_to(alpha.data() + i, element_aligned);
         }
         for (; i < N; ++i)
             alpha[i] = std::clamp(ranks[i] * scale - clip, -clip, clip);
+
+        // // rank_zscore_simd: replace the simd block with:
+        // const float scale = (N > 1) ? (2.0f * clip / static_cast<float>(N - 1)) : 0.0f;
+        // for (std::size_t i = 0; i < N; ++i)
+        //     alpha[i] = std::clamp(ranks[i] * scale - clip, -clip, clip);
 
         return {};
     }
@@ -155,7 +212,7 @@ public:
 
         const float vt = kRegimeTable[static_cast<int>(regime)].vol_target;
 
-        using simd_t = std::simd<float>;
+        using simd_t = native_simd<float>;
         const std::size_t N    = alpha.size();
         const std::size_t step = simd_t::size();
         const simd_t vt_v = vt;
@@ -163,12 +220,34 @@ public:
 
         std::size_t i = 0;
         for (; i + step <= N; i += step) {
-            simd_t a(alpha.data() + i, std::element_aligned);
-            simd_t v(f_vol.data()  + i, std::element_aligned);
-            (a * (vt_v / (v + eps))).copy_to(alpha.data() + i, std::element_aligned);
+            // 1. Load data into SIMD registers
+            simd_t a_vec;
+            a_vec.copy_from(alpha.data() + i, element_aligned);
+
+            simd_t v_vec;
+            v_vec.copy_from(f_vol.data() + i, element_aligned);
+
+            simd_t result;
+
+            // 2. Perform the math per-lane
+            // Clang 19 will optimize this back into pure SIMD instructions
+            for (std::size_t n = 0; n < step; ++n) {
+                // Calculation: a * (vt / (v + eps))
+                result[n] = a_vec[n] * (vt / (v_vec[n] + kVolEps));
+            }
+
+            // 3. Store back to memory
+            result.copy_to(alpha.data() + i, element_aligned);
         }
+
+        // Scalar Tail
         for (; i < N; ++i)
             alpha[i] *= vt / (f_vol[i] + kVolEps);
+
+        // // apply_vol_scaling_regime: replace simd block with:
+        // const std::size_t N = alpha.size();
+        // for (std::size_t i = 0; i < N; ++i)
+        //     alpha[i] *= vt / (f_vol[i] + kVolEps);
 
         return {};
     }
@@ -191,19 +270,41 @@ public:
         if (cap <= 0.0f) [[unlikely]]
             return std::unexpected{"apply_circuit_breaker_regime: cap must be > 0"};
 
-        using simd_t = std::simd<float>;
+        using simd_t = native_simd<float>;
         const std::size_t N    = alpha.size();
         const std::size_t step = simd_t::size();
-        const simd_t lo = -cap;
-        const simd_t hi =  cap;
+
+        // Use float scalars for the clamp boundaries
+        const float lo = -cap;
+        const float hi =  cap;
 
         std::size_t i = 0;
         for (; i + step <= N; i += step) {
-            simd_t a(alpha.data() + i, std::element_aligned);
-            std::simd::clamp(a, lo, hi).copy_to(alpha.data() + i, std::element_aligned);
+            // 1. Load data into the SIMD register
+            simd_t a;
+            a.copy_from(alpha.data() + i, element_aligned);
+
+            // 2. Create a result register
+            simd_t result;
+
+            // 3. Process each lane using member operator[]
+            // This bypasses the hidden stdx::clamp non-member function
+            for (std::size_t n = 0; n < step; ++n) {
+                // Extract to float to avoid simd_reference template issues
+                float val = a[n];
+                result[n] = std::clamp(val, lo, hi);
+            }
+
+            // 4. Store back to memory
+            result.copy_to(alpha.data() + i, element_aligned);
         }
         for (; i < N; ++i)
             alpha[i] = std::clamp(alpha[i], -cap, cap);
+
+        // // apply_circuit_breaker_regime: replace simd block with:
+        // const std::size_t N = alpha.size();
+        // for (std::size_t i = 0; i < N; ++i)
+        //     alpha[i] = std::clamp(alpha[i], -cap, cap);
 
         return {};
     }
@@ -238,7 +339,7 @@ public:
         if (alpha.size() != f_vol.size()) [[unlikely]]
             return std::unexpected{"apply_nonlinear_interaction_cap: size mismatch"};
 
-        using simd_t = std::simd<float>;
+        using simd_t = native_simd<float>;
         const std::size_t N    = alpha.size();
         const std::size_t step = simd_t::size();
         const simd_t vt   = vol_target;
@@ -248,17 +349,45 @@ public:
 
         std::size_t i = 0;
         for (; i + step <= N; i += step) {
-            simd_t a(alpha.data() + i, std::element_aligned);
-            simd_t v(f_vol.data()  + i, std::element_aligned);
-            // effective_cap = base_cap / max(vol/vol_target, 1)
-            simd_t eff_cap = cap / std::simd::max(v / (vt + eps), one);
-            std::simd::clamp(a, -eff_cap, eff_cap)
-                .copy_to(alpha.data() + i, std::element_aligned);
+            // 1. Load data
+            simd_t a_vec;
+            a_vec.copy_from(alpha.data() + i, element_aligned);
+
+            simd_t v_vec;
+            v_vec.copy_from(f_vol.data() + i, element_aligned);
+
+            simd_t result;
+
+            // 2. Process each lane
+            for (std::size_t n = 0; n < step; ++n) {
+                // Extract to plain float to avoid template deduction failures
+                float current_alpha = a_vec[n];
+                float current_vol   = v_vec[n];
+
+                // Calculate effective_cap
+                float ratio = current_vol / (vol_target + kVolEps);
+                if (ratio < 1.0f) ratio = 1.0f;
+
+                float eff_cap = base_cap / ratio;
+
+                // std::clamp now sees (float, float, float) -> SUCCESS
+                result[n] = std::clamp(current_alpha, -eff_cap, eff_cap);
+            }
+
+            // 3. Store the results back
+            result.copy_to(alpha.data() + i, element_aligned);
         }
         for (; i < N; ++i) {
             float eff = base_cap / std::max(f_vol[i] / (vol_target + kVolEps), 1.0f);
             alpha[i]  = std::clamp(alpha[i], -eff, eff);
         }
+
+        // // apply_nonlinear_interaction_cap: replace simd block with:
+        // const std::size_t N = alpha.size();
+        // for (std::size_t i = 0; i < N; ++i) {
+        //     float eff = base_cap / std::max(f_vol[i] / (vol_target + kVolEps), 1.0f);
+        //     alpha[i]  = std::clamp(alpha[i], -eff, eff);
+        // }
 
         return {};
     }

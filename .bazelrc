@@ -4,20 +4,16 @@
 build --compilation_mode=opt
 build --copt=-O3
 build --strip=never
-build --incompatible_enable_cc_toolchain_resolution
 
 # ── Linux / Ubuntu 24.04 (Clang-19 + libc++) ─────────────────────────────────
 # COMPILER FLAGS:
 build:linux --cxxopt=-std=c++26
 build:linux --cxxopt=-stdlib=libc++
 build:linux --copt=-march=native
-build:linux --copt=-fexperimental-library
+build:linux --cxxopt=-fexperimental-library
 
-# MODULE DISCOVERY FIXES:
-# Using --copt ensures these reach the Clang driver for the generated .cpp files.
-build:linux --copt=-fimplicit-modules
-build:linux --copt=-fimplicit-module-maps
-build:linux --copt=-fbuiltin-module-map
+# (module-discovery cxxopts removed: -fno-implicit-modules blocks builtin modules)
+build:linux --cxxopt=-fbuiltin-module-map
 
 # LINKER FLAGS:
 build:linux --linkopt=-stdlib=libc++

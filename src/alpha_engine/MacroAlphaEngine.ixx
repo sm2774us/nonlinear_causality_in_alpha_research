@@ -24,11 +24,19 @@
 // Example (C++):
 //   alpha_pod::MacroAlphaEngine engine{};
 //   engine.run_pipeline(alpha, vol, alpha_pod::Regime::STRESS);
+module; // Global Module Fragment (Standard Headers Only)
+
+// import std;
+
+// Standard Library Headers
+#include <span>          // For std::span
+#include <expected>      // For std::expected
+#include <string>        // For std::string
+#include <cstdint>       // For fixed-width types if needed
 
 export module AlphaPod.MacroAlphaEngine;
 
 import AlphaPod.RiskKernel;
-import std;
 
 namespace alpha_pod {
 
@@ -81,16 +89,11 @@ public:
         return {};
     }
 
-    // ── v1 legacy API (backward compatible) ───────────────────────────────────
-
-    /// @brief v1 pipeline — delegates to TRANSITION regime for backward compatibility.
-    [[nodiscard]] std::expected<void, std::string>
-    run_pipeline(
-        std::span<float>       alpha,
-        std::span<const float> f_vol
-    ) const noexcept {
-        return run_pipeline(alpha, f_vol, Regime::TRANSITION);
-    }
+    // v1 backward-compat: the 3-param overload above already has
+    // Regime regime = Regime::TRANSITION as default, so calling
+    // run_pipeline(alpha, vol) resolves to it unambiguously.
+    // The separate 2-param overload has been removed to eliminate
+    // overload-resolution ambiguity (both overloads matched 2-arg calls).
 
     [[nodiscard]] float vol_target()  const noexcept { return vol_target_; }
     [[nodiscard]] float weight_cap()  const noexcept { return weight_cap_; }

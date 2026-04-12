@@ -17,7 +17,12 @@
 //     - NaN / Inf not produced   : for any reasonable input
 //
 // Run: bazel test //src/alpha_engine:alpha_engine_test --config=linux
-
+// Plain TU — NOT a named module unit.
+// The test binary is a plain executable. Declaring it as a module impl unit
+// requires a matching export-module interface in FILE_SET CXX_MODULES —
+// none exists — so CMake's dyndep would reject the build.
+// A plain TU with import declarations is the correct approach:
+// clang-scan-deps detects them and CMake injects -fmodule-file= flags.
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <cmath>
@@ -25,10 +30,20 @@
 #include <vector>
 #include <span>
 
+// C++26 named-module imports (resolved at compile time via dyndep)
 import AlphaPod.MacroAlphaEngine;
 import AlphaPod.RiskKernel;
 
 namespace alpha_pod::test {
+
+// Use explicit aliases to force the compiler to resolve the module symbols early
+using Regime = alpha_pod::Regime;
+using RiskKernel = alpha_pod::RiskKernel;
+using MacroAlphaEngine = alpha_pod::MacroAlphaEngine;
+// kRegimeTable is a constexpr variable, not a type.
+// 'using X = Y' is type-alias syntax (invalid for variables).
+// 'using alpha_pod::kRegimeTable' is a using-declaration — valid for variables.
+using alpha_pod::kRegimeTable;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

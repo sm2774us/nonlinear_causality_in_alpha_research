@@ -6,77 +6,98 @@ module(
     compatibility_level = 1,
 )
 
-# ── BCR-VALID DEPENDENCIES (Pinned to match your resolved graph) ─────────────
-bazel_dep(name = "rules_python",           version = "1.7.0")
-bazel_dep(name = "googletest",             version = "1.17.0")
-bazel_dep(name = "bazel_skylib",           version = "1.7.1")
-bazel_dep(name = "rules_cc",               version = "0.0.17")
-bazel_dep(name = "rules_foreign_cc",       version = "0.12.0")
-bazel_dep(name = "rules_shell",            version = "0.3.0")
+# ── BCR dependencies ───────────────────────────────────────────────────────────
+bazel_dep(name = "rules_python",  version = "1.7.0")
+bazel_dep(name = "bazel_skylib",  version = "1.8.2")
+bazel_dep(name = "rules_cc",      version = "0.2.17")
+bazel_dep(name = "rules_shell",   version = "0.6.1")
+bazel_dep(name = "platforms",     version = "1.0.0")
+# rules_foreign_cc deliberately omitted: its cmake() rule injects an internal
+# $NINJA variable (build_script.sh:182) that is unbound in Colab, and it
+# hard-codes -G 'Unix Makefiles' which cannot compile C++26 .ixx modules.
 
-# ── NON-BCR / LEGACY DEPENDENCIES ───────────────────────────────────────────
+# ── Python toolchain ───────────────────────────────────────────────────────────
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.13", is_default = True)
 
-# 1. Hedron: Requires git_override (it has a MODULE.bazel, just not in BCR)
-bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
-git_override(
-    module_name = "hedron_compile_commands",
-    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-    commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93", 
+# ── HTTP archives ─────────────────────────────────────────────────────────────
+# Each archive declares an all_files filegroup so the alpha_engine_delegated
+# genrule can list them as srcs, forcing Bazel to download them before
+# the genrule's shell script runs.
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# 1. GoogleTest 1.15.2
+http_archive(
+    name = "googletest",
+    urls = ["https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz"],
+    strip_prefix = "googletest-1.15.2",
+    integrity = "sha256-e0K01u1IgQxTYsJloX+uvpDcI3PIheUhZDnTeSfwKSY=",
+    build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
+cc_library(
+    name = "gtest",
+    srcs = glob(["googletest/src/*.cc"], exclude = ["googletest/src/gtest-all.cc"]),
+    hdrs = glob(["googletest/include/**/*.h", "googletest/src/*.h"]),
+    includes = ["googletest/include", "googletest"],
+    linkopts = ["-pthread"],
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "gtest_main",
+    srcs = ["googletest/src/gtest_main.cc"],
+    deps = [":gtest"],
+    visibility = ["//visibility:public"],
+)
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+""",
 )
 
-# 2. Add tsl-robin-map (Required by nanobind internals)
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+# 2. TSL Robin Map 1.3.0
 http_archive(
     name = "tsl_robin_map",
     urls = ["https://github.com/Tessil/robin-map/archive/refs/tags/v1.3.0.tar.gz"],
     strip_prefix = "robin-map-1.3.0",
-    # The actual SHA256 of the v1.3.0 archive from GitHub
     integrity = "sha256-qEJK07Cv/UxX7Sbw89iilgTw4fLvIIn0l/YUsclMcjY=",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "tsl_robin_map",
     hdrs = glob(["include/tsl/*.h"]),
     includes = ["include"],
     visibility = ["//visibility:public"],
 )
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
 """,
 )
 
-# 3. Nanobind: Final corrected injection with internal header paths
-# We use http_archive via use_repo_rule to avoid the "No MODULE.bazel" error.
+# 3. Nanobind 2.0.0
 http_archive(
     name = "nanobind",
     urls = ["https://github.com/wjakob/nanobind/archive/refs/tags/v2.0.0.tar.gz"],
     strip_prefix = "nanobind-2.0.0",
     integrity = "sha256-LnBydITtt6hkXSb2qfZzUqZoZXw03npgO/nGjly/j/k=",
     build_file_content = """
-cc_library(
-    name = "nanobind",
-    srcs = glob(["src/*.cpp"]),
-    hdrs = glob([
-        "include/nanobind/**/*.h",
-        "src/*.h",
-    ]),
-    includes = ["include", "src"],
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
     visibility = ["//visibility:public"],
-    copts = ["-std=c++17"],
-    features = ["-default_compile_flags"], 
-    deps = [
-        "@rules_python//python/cc:current_py_cc_headers",
-        "@tsl_robin_map",
-    ],
 )
 """,
 )
 
-# ── Python 3.13 Toolchain ─────────────────────────────────────────────────────
-python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(python_version = "3.13")
-
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-pip.parse(
-    hub_name = "pip",
-    python_version = "3.13",
-    requirements_lock = "//:requirements_lock.txt",
+# ── Hedron compile commands (dev only) ─────────────────────────────────────────
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    commit = "1e08f8e0507b6b6b1f4416a9a22cf5c28beaba93",
 )
-use_repo(pip, "pip")

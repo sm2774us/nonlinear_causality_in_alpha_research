@@ -1,38 +1,122 @@
-# src/alpha_engine/BUILD.bazel — AlphaPod v2 (Delegated to CMake)
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
-load("@rules_shell//shell:sh_test.bzl", "sh_test")  # <--- ADD THIS LINE
+# src/alpha_engine/BUILD.bazel — AlphaPod v2
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# ROOT-CAUSE FIX (DEFINITIVE):
+#
+# rules_foreign_cc's cmake() rule injects its own Ninja toolchain via the
+# internal variable $NINJA (resolved in build_script.sh:182). Outside its
+# expected sandbox environment (Colab / Google Cloud), that variable is never
+# populated → "NINJA: unbound variable" → build dies before a single file
+# is compiled.
+#
+# Additionally, cmake() hard-codes -G 'Unix Makefiles' as the default generator
+# unless its internal Ninja toolchain resolves correctly, making C++26 module
+# scanning (CMAKE_CXX_SCAN_FOR_MODULES=ON) impossible regardless.
+#
+# Solution: replace cmake() entirely with a local genrule that directly
+# invokes system cmake (installed via pip) with -G Ninja.
+# No rules_foreign_cc involvement whatsoever.
+# ══════════════════════════════════════════════════════════════════════════════
 
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+# All source files in this package
 filegroup(
     name = "engine_srcs",
-    srcs = glob(["**"]),
+    srcs = glob(["**"], exclude = ["BUILD.bazel"]),
 )
 
-cmake(
-    name = "alpha_engine_delegated",
-    cache_entries = {
-        "CMAKE_CXX_COMPILER": "clang++-19",
-        "CMAKE_CXX_STANDARD": "26",
-        "CMAKE_PREFIX_PATH": "$$EXT_BUILD_DEPS$$",
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -fexperimental-library",
-    },
-    lib_source = ":engine_srcs",
-    out_shared_libs = ["libalpha_engine_cpp.so"],
-    out_binaries = ["alpha_engine_test"],
-    deps = [
-        # CRITICAL: Target individual libraries to prevent double-counting
-        "@nanobind//:nanobind",
-        "@googletest//:gtest_main",
+# Force Bazel to materialise external deps before the genrule runs.
+# Each http_archive exposes an all_files filegroup (declared in MODULE.bazel).
+filegroup(
+    name = "_ext_deps",
+    srcs = [
+        "@nanobind//:all_files",
+        "@googletest//:all_files",
+        "@tsl_robin_map//:all_files",
     ],
 )
 
-alias(
-    name = "alpha_engine_cpp.so",
-    actual = ":alpha_engine_delegated",
+# ── Direct cmake + ninja build ────────────────────────────────────────────────
+# local = True  →  runs in the execroot, not a hermetic sandbox
+#                  so system PATH (cmake, ninja from pip) is visible
+genrule(
+    name = "alpha_engine_delegated",
+    srcs = [
+        ":engine_srcs",
+        ":_ext_deps",
+    ],
+    outs = [
+        "alpha_engine_cpp.so",
+        "alpha_engine_test_bin",
+    ],
+    local = True,
+    cmd = """
+set -euo pipefail
+
+EXECROOT=$$PWD
+export CC=clang-19
+export CXX=clang++-19
+export LD_LIBRARY_PATH=/usr/lib/llvm-19/lib:$${LD_LIBRARY_PATH:-}
+export PATH=/usr/lib/llvm-19/bin:/usr/local/bin:$$PATH
+
+SRC=$$EXECROOT/src/alpha_engine
+BUILD=/tmp/_ae_build_$$$$
+mkdir -p $$BUILD
+
+# External dep paths inside the Bazel execroot
+NB=$$EXECROOT/external/+http_archive+nanobind
+TSL=$$EXECROOT/external/+http_archive+tsl_robin_map/include
+GT=$$EXECROOT/external/+http_archive+googletest
+
+echo "=== cmake configure (Ninja generator, C++26 modules) ==="
+cmake \\
+  -S $$SRC \\
+  -B $$BUILD \\
+  -G Ninja \\
+  -DCMAKE_CXX_COMPILER=clang++-19 \\
+  -DCMAKE_C_COMPILER=clang-19 \\
+  -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=/usr/lib/llvm-19/bin/clang-scan-deps \\
+  -DCMAKE_CXX_STANDARD=26 \\
+  -DCMAKE_CXX_STANDARD_REQUIRED=ON \\
+  -DCMAKE_CXX_SCAN_FOR_MODULES=ON \\
+  -DCMAKE_BUILD_TYPE=Release \\
+  -DNANOBIND_DIR=$$NB \\
+  -DTSL_INCLUDE_DIR=$$TSL \\
+  -DGTEST_SOURCE_DIR=$$GT
+
+echo "=== ninja build ==="
+ninja -C $$BUILD -j$$(nproc)
+
+echo "=== install outputs ==="
+cp $$BUILD/alpha_engine_cpp.so     $(location alpha_engine_cpp.so)
+cp $$BUILD/alpha_engine_test_bin   $(location alpha_engine_test_bin)
+rm -rf $$BUILD
+""",
+    visibility = ["//visibility:public"],
 )
 
+# ── Test launcher script ──────────────────────────────────────────────────────
+genrule(
+    name = "gen_test_wrapper",
+    srcs = [":alpha_engine_delegated"],
+    outs = ["test_launcher.sh"],
+    local = True,
+    cmd = """
+echo '#!/bin/bash' > $@
+echo 'set -euo pipefail' >> $@
+echo 'export LD_LIBRARY_PATH=/usr/lib/llvm-19/lib:$${LD_LIBRARY_PATH:-}' >> $@
+echo 'SCRIPT_DIR=$$(cd $$(dirname $${BASH_SOURCE[0]}) && pwd)' >> $@
+echo 'exec "$$SCRIPT_DIR/alpha_engine_test_bin" "$$@"' >> $@
+chmod +x $@
+""",
+    executable = True,
+    visibility = ["//visibility:public"],
+)
+
+# ── sh_test wraps the launcher ────────────────────────────────────────────────
 sh_test(
     name = "alpha_engine_test",
-    srcs = ["test_wrapper.sh"],
+    srcs = [":gen_test_wrapper"],
     data = [":alpha_engine_delegated"],
 )

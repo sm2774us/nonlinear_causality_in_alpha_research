@@ -1,15 +1,57 @@
 # .github/workflows/ci.yml
 # Copyright 2026 AlphaPod Contributors. All Rights Reserved.
 #
-# Fix history vs original:
-#   LINUX:   Replaced apt-install of python3.13 + bazel-7.0.0 (not in ubuntu-24.04
-#            standard repos) with actions/setup-python@v5 + bazelbuild/setup-bazelisk@v3.
-#            Only clang-19/libc++-19 are apt-installed (they ARE in noble repos).
-#   WINDOWS: Fixed copy step — Bazel on Windows outputs .dll not .so.
-#            PowerShell glob tries .so/.dll/.so.dll and copies first match.
-#   BOTH:    C++ build/test steps are continue-on-error (C++26 import std/simd
-#            requires experimental flags). Python tests always run unconditionally
-#            using NonlinearFallbackModel when C++ .so is absent.
+# Delta-fix history vs prior ci.yml (keyed to notebook Modern_Alpha_Research_CPP26.ipynb):
+#
+#  LINUX — 6 concrete deltas applied:
+#
+#  Δ1  Install step: add clang-tools-19 (provides clang-scan-deps, mandatory
+#      for C++26 named-module dependency scanning) and ninja-build (required
+#      by the CMake Ninja generator inside the BUILD.bazel genrule).
+#      Add: sudo ln -sf /usr/lib/llvm-19/bin/clang-scan-deps /usr/bin/clang-scan-deps
+#      The symlink is checked by cmake at configure time via
+#      -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS; without it cmake aborts.
+#
+#  Δ2  Python deps: add cmake and ninja pip packages.
+#      The BUILD.bazel genrule calls system `cmake` and `ninja` directly
+#      (rules_foreign_cc is deliberately omitted — see BUILD.bazel header).
+#      pip cmake/ninja guarantee a ≥3.28 cmake and matching ninja on PATH
+#      regardless of what the ubuntu-24.04 image ships.
+#
+#  Δ3  New step: "Sync Bazel module graph and fetch external deps".
+#      `bazel mod tidy`  — reconciles MODULE.bazel lock after clean --expunge.
+#      `bazel fetch`     — materialises all http_archive repos (googletest,
+#      nanobind, tsl_robin_map) into the Bazel cache BEFORE the genrule runs,
+#      so the genrule shell script finds them at $EXECROOT/external/...
+#      Without prefetch the genrule fails with "no such file or directory"
+#      on the external dep paths.
+#
+#  Δ4  Build step: build BOTH targets in one invocation:
+#        //src/alpha_engine:alpha_engine_delegated   (produces .so + test bin)
+#        //src/alpha_engine:gen_test_wrapper         (produces test_launcher.sh)
+#      Prior ci.yml only built the first; bazel test then failed because
+#      test_launcher.sh was absent.
+#
+#  Δ5  Build / test steps: add the full Bazel flag set from the notebook:
+#        --jobs=auto
+#        --check_direct_dependencies=off       (suppress Bzlmod version noise)
+#        --features=-deterministic_header_guards (fix builtin macro redefinition)
+#        --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+#        --action_env=CC / CXX / CLANG_SCAN_DEPS / LD_LIBRARY_PATH
+#        --cxxopt=-std=c++26  -stdlib=libc++  -fexperimental-library
+#        --linkopt=-stdlib=libc++  -lc++abi
+#        --linkopt=-L/usr/lib/llvm-19/lib  -Wl,-rpath,...
+#      Without these the Bazel-invoked cmake sees the wrong compiler,
+#      cannot find libc++abi at link time, and RPATH is absent from the .so.
+#
+#  Δ6  Deploy step: fix .so filename.
+#      CMakeLists.txt sets set_target_properties(alpha_engine_cpp PROPERTIES
+#      PREFIX "" SUFFIX ".so"), so cmake produces alpha_engine_cpp.so —
+#      NOT libalpha_engine_cpp.so.  Prior ci.yml searched for the lib-prefixed
+#      name and always returned empty, silently skipping the copy and leaving
+#      Python tests without the extension.
+#
+#  WINDOWS — unchanged from prior ci.yml (notebook is Linux-only).
 
 name: AlphaPod-v2-CI
 
@@ -36,33 +78,138 @@ jobs:
         with:
           python-version: "3.13"
 
-      # clang-19 and libc++-19 ARE in ubuntu-24.04 noble repos
-      - name: Install clang-19 and libc++
+      # Δ1: clang-tools-19 (clang-scan-deps) and ninja-build are both
+      # required by the CMake+Ninja+C++26-modules build path.
+      # clang-19 and libc++-19 ARE in ubuntu-24.04 noble repos; clang-tools-19
+      # ships in the same LLVM apt pocket and is also available there.
+      - name: Install clang-19, clang-tools-19, libc++, and ninja
         run: |
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
-            clang-19 libc++-19-dev libc++abi-19-dev
-          # Link clang-19 as the default 'clang' so Bazel finds it easily
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+            clang-19 clang-tools-19 libc++-19-dev libc++abi-19-dev ninja-build
 
+          # Link clang-19/clang++-19 as the default compiler so Bazel finds them
+          sudo update-alternatives \
+            --install /usr/bin/clang   clang   /usr/bin/clang-19   100
+          sudo update-alternatives \
+            --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+
+          # Δ1 (cont.): CMakeLists.txt passes
+          # -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=/usr/lib/llvm-19/bin/clang-scan-deps
+          # cmake verifies that path at configure time; also expose it on PATH
+          # so any tool that shells out to clang-scan-deps finds it too.
+          sudo ln -sf \
+            /usr/lib/llvm-19/bin/clang-scan-deps \
+            /usr/bin/clang-scan-deps
+
+          echo "--- Toolchain verification ---"
+          clang++         --version
+          ninja           --version
+          clang-scan-deps --version
+
+      # Δ2: cmake and ninja pip packages guarantee ≥3.28 cmake (required for
+      # C++26 CXX_SCAN_FOR_MODULES support) and a matching ninja binary.
+      # The BUILD.bazel genrule shells out to `cmake` and `ninja` directly;
+      # pip install puts them on PATH before any Bazel action runs.
       - name: Install Python dependencies
-        run: pip install polars numpy scipy pytest pytest-cov
+        run: pip install polars numpy scipy pytest pytest-cov cmake ninja
 
-      - name: Build and Deploy Alpha Engine
+      # Δ3: Sync module graph then prefetch all http_archive repos.
+      # `bazel mod tidy`           — reconciles MODULE.bazel after expunge.
+      # `bazel fetch //...`        — downloads googletest, nanobind,
+      #                              tsl_robin_map into the Bazel cache so the
+      #                              genrule shell script can reference them at
+      #                              $EXECROOT/external/+http_archive+<name>.
+      - name: Sync Bazel module graph and fetch external deps
         run: |
-          # 1. Clean stale artifacts
+          bazel mod tidy
+          bazel fetch //src/alpha_engine/...
+
+      # Δ4 + Δ5 + Δ6: full notebook-faithful build, deploy, and test.
+      - name: Build Alpha Engine and test launcher
+        env:
+          # Δ5: surface env-vars to the step shell AND to every Bazel action
+          # via --action_env below. Both are needed: the step env makes the
+          # variables visible to `bazel info` and shell sub-commands; the
+          # --action_env flags propagate them into the genrule sandbox.
+          CC: clang-19
+          CXX: clang++-19
+          CLANG_SCAN_DEPS: /usr/lib/llvm-19/bin/clang-scan-deps
+          LD_LIBRARY_PATH: /usr/lib/llvm-19/lib
+        run: |
           bazel clean --expunge
-          
-          # 2. Build via CMake delegation
-          bazel build //src/alpha_engine:alpha_engine_delegated --config=linux --spawn_strategy=local
-          
-          # 3. Discover and deploy the .so
-          SO_FILE=$(find bazel-bin/src/alpha_engine/ -name "libalpha_engine_cpp.so" | head -n 1)
+
+          # Δ4: build BOTH targets — alpha_engine_delegated (produces
+          # alpha_engine_cpp.so + alpha_engine_test_bin) AND gen_test_wrapper
+          # (produces test_launcher.sh consumed by the sh_test rule).
+          bazel build \
+            //src/alpha_engine:alpha_engine_delegated \
+            //src/alpha_engine:gen_test_wrapper \
+            --config=linux \
+            --spawn_strategy=local \
+            --jobs=auto \
+            --check_direct_dependencies=off \
+            --features=-deterministic_header_guards \
+            --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 \
+            --action_env=CC=clang-19 \
+            --action_env=CXX=clang++-19 \
+            --action_env=CLANG_SCAN_DEPS=/usr/lib/llvm-19/bin/clang-scan-deps \
+            --action_env=LD_LIBRARY_PATH=/usr/lib/llvm-19/lib \
+            --cxxopt=-std=c++26 \
+            --cxxopt=-stdlib=libc++ \
+            --cxxopt=-fexperimental-library \
+            --linkopt=-stdlib=libc++ \
+            --linkopt=-lc++abi \
+            "--linkopt=-L/usr/lib/llvm-19/lib" \
+            "--linkopt=-Wl,-rpath,/usr/lib/llvm-19/lib"
+
+          # Δ6: CMakeLists.txt sets PREFIX "" so cmake produces
+          # alpha_engine_cpp.so — NOT libalpha_engine_cpp.so.
+          # Prior ci.yml searched for the lib-prefixed name and always
+          # got an empty match, silently skipping the deploy.
+          SO_FILE=$(find bazel-bin/src/alpha_engine/ \
+                      -name "alpha_engine_cpp.so" | head -n 1)
+
+          if [ -z "$SO_FILE" ]; then
+            echo "ERROR: alpha_engine_cpp.so not found in bazel-bin/src/alpha_engine/"
+            echo "Contents of bazel-bin/src/alpha_engine/:"
+            find bazel-bin/src/alpha_engine/ -maxdepth 2 | sort
+            exit 1
+          fi
+
+          mkdir -p src/research
           cp "$SO_FILE" src/research/alpha_engine_cpp.so
-          
-          # 4. Standard Bazel test execution
-          bazel test //src/alpha_engine:alpha_engine_test --config=linux --test_output=all
+          echo "Deployed: $SO_FILE -> src/research/alpha_engine_cpp.so"
+
+      # Δ5 (cont.): test step carries the same full flag set so the cached
+      # .pcm module files are found and LD_LIBRARY_PATH is set correctly for
+      # the test runner (needed for libc++.so.1 and libc++abi.so.1 RPATH).
+      - name: Run C++ GoogleTest suite
+        env:
+          CC: clang-19
+          CXX: clang++-19
+          CLANG_SCAN_DEPS: /usr/lib/llvm-19/bin/clang-scan-deps
+          LD_LIBRARY_PATH: /usr/lib/llvm-19/lib
+        run: |
+          bazel test //src/alpha_engine:alpha_engine_test \
+            --config=linux \
+            --spawn_strategy=local \
+            --jobs=auto \
+            --check_direct_dependencies=off \
+            --features=-deterministic_header_guards \
+            --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 \
+            --action_env=CC=clang-19 \
+            --action_env=CXX=clang++-19 \
+            --action_env=CLANG_SCAN_DEPS=/usr/lib/llvm-19/bin/clang-scan-deps \
+            --action_env=LD_LIBRARY_PATH=/usr/lib/llvm-19/lib \
+            --cxxopt=-std=c++26 \
+            --cxxopt=-stdlib=libc++ \
+            --cxxopt=-fexperimental-library \
+            --linkopt=-stdlib=libc++ \
+            --linkopt=-lc++abi \
+            "--linkopt=-L/usr/lib/llvm-19/lib" \
+            "--linkopt=-Wl,-rpath,/usr/lib/llvm-19/lib" \
+            --test_output=all
 
       # Python tests always run — use NonlinearFallbackModel when no .so present
       - name: Run Python tests
