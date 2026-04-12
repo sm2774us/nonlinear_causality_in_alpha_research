@@ -16,31 +16,26 @@ alphapod/
 ├── run.sh / run.bat                    # One-shot build + run scripts
 ├── requirements_lock.txt               # Locked pip deps
 ├── SOLUTION_EXPLANATION.md             # Full mathematical deep-dive (MathJax + Mermaid)
-├── research.pdf                        # Academic paper (LaTeX)
-├── research.ipynb                      # Backtesting notebook (KPIs, black swan tests)
-├── src/
-│   ├── alpha_engine/                   # C++26 SIMD risk kernel
-│   │   ├── BUILD.bazel
-│   │   ├── RiskKernel.ixx              # rank_zscore_simd, vol_scaling_regime, nonlinear_cap
-│   │   ├── MacroAlphaEngine.ixx        # Top-level engine: run_pipeline(alpha, vol, regime)
-│   │   ├── bindings.cpp                # nanobind bridge; exposes Regime enum to Python
-│   │   └── alpha_engine_test.cpp       # GoogleTest v2: regime ordering, NaN guards
-│   └── research/                       # Python 3.13 research pipeline
-│       ├── BUILD.bazel
-│       ├── config.py                   # Frozen PodConfig (v2 + causal/regime params)
-│       ├── causality.py                # KSG Transfer Entropy + AAFT + CCM
-│       ├── regime.py                   # Gaussian HMM: CALM/TRANSITION/STRESS
-│       ├── features.py                 # Rank z-score, interactions, regime-gating
-│       ├── inference.py                # MAX Engine wrapper / NonlinearFallbackModel
-│       ├── alpha_pipeline.py           # v2 orchestration entry-point
-│       ├── test_alpha_pipeline.py      # pytest baseline suite (v1+v2 compatibility)
-│       └── test_nonlinear_pipeline.py  # pytest v2 suite (100% coverage)
-├── models/README.md                    # Model artefact conventions
-└── docs/                               # Full documentation
-    ├── SOLUTION_EXPLANATION.md
-    ├── research.tex / research.bib / research.pdf
-    ├── AlphaPod_Production_Monorepo.md
-    └── Alpha_Research_NonLinear.md
+├── models/                             # AlphaPod v2 Model Artifacts
+├── research/research.{bib|tex|pdf}     # Academic paper (LaTeX)
+├── notesbooks/research.ipynb           # Backtesting notebook (KPIs, black swan tests)
+└── src/
+    ├── alpha_engine/                   # C++26 SIMD risk kernel
+    │   ├── BUILD.bazel
+    │   ├── RiskKernel.ixx              # rank_zscore_simd, vol_scaling_regime, nonlinear_cap
+    │   ├── MacroAlphaEngine.ixx        # Top-level engine: run_pipeline(alpha, vol, regime)
+    │   ├── bindings.cpp                # nanobind bridge; exposes Regime enum to Python
+    │   └── alpha_engine_test.cpp       # GoogleTest v2: regime ordering, NaN guards
+    └── research/                       # Python 3.13 research pipeline
+        ├── BUILD.bazel
+        ├── config.py                   # Frozen PodConfig (v2 + causal/regime params)
+        ├── causality.py                # KSG Transfer Entropy + AAFT + CCM
+        ├── regime.py                   # Gaussian HMM: CALM/TRANSITION/STRESS
+        ├── features.py                 # Rank z-score, interactions, regime-gating
+        ├── inference.py                # MAX Engine wrapper / NonlinearFallbackModel
+        ├── alpha_pipeline.py           # v2 orchestration entry-point
+        ├── test_alpha_pipeline.py      # pytest baseline suite (v1+v2 compatibility)
+        └── test_nonlinear_pipeline.py  # pytest v2 suite (100% coverage)
 ```
 
 ## Quick Start (Ubuntu 24.04)

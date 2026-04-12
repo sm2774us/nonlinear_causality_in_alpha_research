@@ -1,4 +1,4 @@
-# AlphaPod v2 Model Artefacts
+# AlphaPod v2 Model Artifacts
 
 Place compiled MAX Engine model files here.
 
