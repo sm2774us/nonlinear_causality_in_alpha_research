@@ -1094,9 +1094,9 @@ $$T_X \to Y^{\text{symbolic}} = H(\pi_{Y_t} | \pi_{Y_{t-1}}) - H(\pi_{Y_t} | \pi
 
 **Model:**
 
-$$
+```math
 \text{Net PnL}_t = \mathbf{w}_t^\top \mathbf{r}_{t+1} - \sum_i \lambda_i |\Delta w_{i,t}|
-$$
+```
 
 where
 
