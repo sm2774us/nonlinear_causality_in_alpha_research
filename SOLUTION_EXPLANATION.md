@@ -60,7 +60,17 @@ $$\alpha_i = \sigma\!\left(\mathbf{w}_b \cdot \mathbf{f}_{\text{base},i}\right) 
 where:
 
 - $\sigma(\cdot)$ is a sigmoid **nonlinear gate** that prevents the base linear score from dominating with unconstrained magnitude
-- $\mathbf{f}_{\text{cross}}$ contains explicit interaction terms: $f_{\text{mom}} \times f_{\text{vol}}$, $f_{\text{carry}} \times f_{\text{vol}}$
+
+- $\mathbf{f}_{\text{cross}}$ contains explicit interaction terms:
+
+$$
+f_{\text{mom}} \times f_{\text{vol}}
+$$
+
+$$
+f_{\text{carry}} \times f_{\text{vol}}
+$$
+
 - $\mathbf{f}_{\text{causal}}$ injects cross-asset information transfer scores from the causal graph
 
 ```mermaid
