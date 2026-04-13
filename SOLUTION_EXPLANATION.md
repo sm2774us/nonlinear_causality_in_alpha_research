@@ -1114,7 +1114,9 @@ $$
 
 **Production standard:** Combinatorial Purged Cross-Validation (CPCV, de Prado, 2018):
 
-$$\text{embargo}(t) = \left[t_{\text{train\_end}}, t_{\text{train\_end}} + h \cdot \bar{\Delta}\right]$$
+```math
+\text{embargo}(t) = \left[t_{\text{train\_end}}, t_{\text{train\_end}} + h \cdot \bar{\Delta}\right]
+```
 
 where $h$ is the prediction horizon and $\bar{\Delta}$ is the average time between observations contributing to a single label. For daily signals with 21-day LOOKBACK, embargo should be at least 21 days.
 
