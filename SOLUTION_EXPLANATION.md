@@ -11,13 +11,13 @@
 
 1. [The Linearity Myth — Superposition vs. Interaction](#1-the-linearity-myth)
 2. [The Liquidity Spiral — Why Linearity Kills in Stress](#2-the-liquidity-spiral)
-3. [Why This Matters for Systematic Macro Alpha Research](#3-systematic-macro-alpha)
+3. [Why This Matters for Systematic Macro Alpha Research](#3-systematic-macro-alpha-research)
 4. [Mathematical Introduction and Deep Dive](#4-mathematical-deep-dive)
-5. [Ma & Prosperino (2024) — The Theoretical Solution](#5-ma-and-prosperino)
-6. [The C++26 Implementation — How Theory Becomes Kernel](#6-cpp26-implementation)
-7. [Full C++26 Solution Walkthrough](#7-full-cpp26-solution)
-8. [The Python Research and Backtest Layer](#8-python-layer)
-9. [Recommendations for Top-Tier Quant Funds](#9-recommendations)
+5. [Ma & Prosperino (2024) — The Theoretical Solution](#5-ma--prosperino-2024)
+6. [The C++26 Implementation — How Theory Becomes Kernel](#6-the-c26-implementation--theory-becomes-kernel)
+7. [Full C++26 Solution Walkthrough](#7-full-c26-solution-walkthrough)
+8. [The Python Research and Backtest Layer](#8-the-python-research-and-backtest-layer)
+9. [Recommendations for Top-Tier Quant Funds](#9-recommendations-for-top-tier-quant-funds)
 
 [🔝 Back to Top](#table-of-contents)
 
