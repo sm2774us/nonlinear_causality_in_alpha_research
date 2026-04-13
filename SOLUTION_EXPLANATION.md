@@ -1094,9 +1094,17 @@ $$T_X \to Y^{\text{symbolic}} = H(\pi_{Y_t} | \pi_{Y_{t-1}}) - H(\pi_{Y_t} | \pi
 
 **Model:**
 
-$$\text{Net PnL}_t = \mathbf{w}_t^\top \mathbf{r}_{t+1} - \sum_i \lambda_i |\Delta w_{i,t}|$$
+$$
+\text{Net PnL}_t = \mathbf{w}_t^\top \mathbf{r}_{t+1} - \sum_i \lambda_i |\Delta w_{i,t}|
+$$
 
-where $\lambda_i = \frac{1}{2}\text{bid-ask}_{i} + \kappa \cdot \sigma_i / \text{ADV}_i^{0.5}$ (square-root market impact model).
+where
+
+$$
+\lambda_i = \frac{1}{2}\text{bid-ask}_{i} + \kappa \cdot \sigma_i / \text{ADV}_i^{0.5}
+$$
+
+(square-root market impact model).
 
 **For macro:** Cross-asset futures are highly liquid, but FX forwards have substantial bid-ask. Calibrate $\lambda_i$ asset-by-asset from broker TCA data.
 
