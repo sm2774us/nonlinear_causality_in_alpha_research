@@ -17,7 +17,7 @@ alphapod/
 ├── requirements_lock.txt               # Locked pip deps
 ├── SOLUTION_EXPLANATION.md             # Full mathematical deep-dive (MathJax + Mermaid)
 ├── models/                             # AlphaPod v2 Model Artifacts
-├── research/research.{bib|tex|pdf}     # Academic paper (LaTeX)
+├── research/Nonlinear_Causality_Transfer_Entropy_Regime_Detection.{tex|pdf}     # Academic paper (LaTeX)
 ├── notesbooks/research.ipynb           # Backtesting notebook (KPIs, black swan tests)
 └── src/
     ├── alpha_engine/                   # C++26 SIMD risk kernel
